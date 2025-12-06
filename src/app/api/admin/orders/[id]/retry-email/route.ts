@@ -39,9 +39,13 @@ export async function POST(
     const result = await sendOrderEmail(order);
 
     if (result.success) {
+      // Fetch the updated order to return current status
+      const updatedOrder = await getOrderById(id);
+      
       return NextResponse.json({
         success: true,
         message: 'Email sent successfully',
+        order: updatedOrder, // Return updated order data
       });
     } else {
       return NextResponse.json({

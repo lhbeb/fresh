@@ -134,14 +134,58 @@ export default function AdminOrdersPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to retry email');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to retry email');
       }
 
-      // Refresh orders to show updated status
-      await fetchOrders();
+      const result = await response.json();
+      
+      // If email was sent successfully, update the order state immediately
+      if (result.success) {
+        // Use the updated order from API response if available, otherwise use optimistic update
+        const updatedOrder = result.order;
+        
+        if (updatedOrder) {
+          // Update with actual data from database
+          setOrders(prevOrders => 
+            prevOrders.map(order => 
+              order.id === orderId ? updatedOrder : order
+            )
+          );
+          setFilteredOrders(prevFiltered => 
+            prevFiltered.map(order => 
+              order.id === orderId ? updatedOrder : order
+            )
+          );
+        } else {
+          // Fallback: optimistic update
+          setOrders(prevOrders => 
+            prevOrders.map(order => 
+              order.id === orderId 
+                ? { ...order, email_sent: true, email_error: null, email_retry_count: 0 }
+                : order
+            )
+          );
+          setFilteredOrders(prevFiltered => 
+            prevFiltered.map(order => 
+              order.id === orderId 
+                ? { ...order, email_sent: true, email_error: null, email_retry_count: 0 }
+                : order
+            )
+          );
+        }
+        
+        // Small delay to ensure database update has propagated, then refresh
+        setTimeout(() => {
+          fetchOrders();
+        }, 500);
+      } else {
+        // If failed, just refresh normally
+        await fetchOrders();
+      }
       setError('');
     } catch (err) {
-      setError('Failed to retry email');
+      setError(err instanceof Error ? err.message : 'Failed to retry email');
       console.error(err);
     } finally {
       setRetryingOrderId(null);

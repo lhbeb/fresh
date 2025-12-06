@@ -129,9 +129,15 @@ export async function PATCH(
     const product = await updateProduct(slug, updates);
 
     if (!product) {
+      // Log more details for debugging
+      console.error('Update product returned null for slug:', slug);
+      console.error('Updates attempted:', JSON.stringify(updates, null, 2));
       return NextResponse.json(
-        { error: 'Product not found or update failed' },
-        { status: 404 }
+        { 
+          error: 'Product update failed. This may be due to invalid data or database constraints. Check server logs for details.',
+          details: 'The product may not exist, or the update data may violate database constraints (e.g., empty strings for required fields).'
+        },
+        { status: 400 }
       );
     }
 
@@ -140,8 +146,12 @@ export async function PATCH(
     return NextResponse.json(product);
   } catch (error) {
     console.error('Error updating product:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to update product' },
+      { 
+        error: 'Failed to update product',
+        details: errorMessage
+      },
       { status: 500 }
     );
   }

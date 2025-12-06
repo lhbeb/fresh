@@ -262,44 +262,68 @@ export async function updateProduct(
   }
 ): Promise<Product | null> {
   try {
+    // Helper function to check if a value is meaningful (not empty string, null, or undefined)
+    const hasValue = (value: any): boolean => {
+      if (value === undefined || value === null) return false;
+      if (typeof value === 'string' && value.trim() === '') return false;
+      if (Array.isArray(value) && value.length === 0) return false;
+      return true;
+    };
+
     // Build update object, handling both snake_case and camelCase
+    // Only include fields that have meaningful values to avoid NOT NULL constraint violations
     const updateData: any = {
       updated_at: new Date().toISOString(),
     };
 
     // Handle slug update - must be done before the query
-    if (updates.slug !== undefined && updates.slug !== slug) {
+    if (updates.slug !== undefined && updates.slug !== slug && hasValue(updates.slug)) {
       updateData.slug = updates.slug;
       // Also update id if it matches the old slug
       updateData.id = updates.slug;
     }
 
-    if (updates.title !== undefined) updateData.title = updates.title;
-    if (updates.description !== undefined) updateData.description = updates.description;
-    if (updates.price !== undefined) updateData.price = updates.price;
-    if (updates.images !== undefined) updateData.images = updates.images;
-    if (updates.condition !== undefined) updateData.condition = updates.condition;
-    if (updates.category !== undefined) updateData.category = updates.category;
-    if (updates.brand !== undefined) updateData.brand = updates.brand;
-    if (updates.payee_email !== undefined) updateData.payee_email = updates.payee_email;
-    if (updates.checkout_link !== undefined) updateData.checkout_link = updates.checkout_link;
-    if (updates.currency !== undefined) updateData.currency = updates.currency;
-    if (updates.rating !== undefined) updateData.rating = updates.rating;
+    // Only update fields that have meaningful values (skip empty strings to avoid NOT NULL constraint violations)
+    // This allows partial updates - e.g., updating only checkout_link without affecting other fields
+    if (updates.title !== undefined && hasValue(updates.title)) updateData.title = updates.title;
+    if (updates.description !== undefined && hasValue(updates.description)) updateData.description = updates.description;
+    // Price can be 0, so only check for null/undefined/NaN
+    if (updates.price !== undefined && updates.price !== null && typeof updates.price === 'number' && !isNaN(updates.price) && isFinite(updates.price)) {
+      updateData.price = updates.price;
+    }
+    if (updates.images !== undefined && hasValue(updates.images)) updateData.images = updates.images;
+    if (updates.condition !== undefined && hasValue(updates.condition)) updateData.condition = updates.condition;
+    if (updates.category !== undefined && hasValue(updates.category)) updateData.category = updates.category;
+    if (updates.brand !== undefined && hasValue(updates.brand)) updateData.brand = updates.brand;
+    if (updates.payee_email !== undefined && hasValue(updates.payee_email)) updateData.payee_email = updates.payee_email;
+    if (updates.checkout_link !== undefined && hasValue(updates.checkout_link)) updateData.checkout_link = updates.checkout_link;
+    if (updates.currency !== undefined && hasValue(updates.currency)) updateData.currency = updates.currency;
+    if (updates.rating !== undefined && updates.rating !== null && !isNaN(updates.rating)) updateData.rating = updates.rating;
     
     // Handle both review_count and reviewCount
-    if (updates.review_count !== undefined) updateData.review_count = updates.review_count;
-    if (updates.reviewCount !== undefined) updateData.review_count = updates.reviewCount;
+    if (updates.review_count !== undefined && updates.review_count !== null && !isNaN(updates.review_count)) {
+      updateData.review_count = updates.review_count;
+    }
+    if (updates.reviewCount !== undefined && updates.reviewCount !== null && !isNaN(updates.reviewCount)) {
+      updateData.review_count = updates.reviewCount;
+    }
     
     if (updates.reviews !== undefined) updateData.reviews = updates.reviews;
     if (updates.meta !== undefined) updateData.meta = updates.meta;
     
-    // Handle both in_stock and inStock
+    // Handle both in_stock and inStock (booleans can be false, so check for undefined)
     if (updates.in_stock !== undefined) updateData.in_stock = updates.in_stock;
     if (updates.inStock !== undefined) updateData.in_stock = updates.inStock;
 
-    // Handle both is_featured and isFeatured
+    // Handle both is_featured and isFeatured (booleans can be false, so check for undefined)
     if (updates.is_featured !== undefined) updateData.is_featured = updates.is_featured;
     if (updates.isFeatured !== undefined) updateData.is_featured = updates.isFeatured;
+
+    // If no fields to update (only updated_at), return existing product
+    if (Object.keys(updateData).length === 1) {
+      const existing = await getProductBySlug(slug);
+      return existing;
+    }
 
     const { data, error } = await supabaseAdmin
       .from('products')
@@ -310,12 +334,27 @@ export async function updateProduct(
 
     if (error) {
       console.error('Error updating product:', error);
+      console.error('Update data:', JSON.stringify(updateData, null, 2));
+      console.error('Error details:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      });
+      return null;
+    }
+
+    if (!data) {
+      console.error('No data returned from update');
       return null;
     }
 
     return transformProduct(data);
   } catch (error) {
     console.error('Error updating product:', error);
+    if (error instanceof Error) {
+      console.error('Error stack:', error.stack);
+    }
     return null;
   }
 }
