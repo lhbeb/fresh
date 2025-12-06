@@ -6,6 +6,9 @@ import type { Review } from '@/types/product';
 // Transform Supabase row to Product type
 function transformProduct(row: any): Product {
   const meta = row.meta || {};
+  // Default to published=true for backward compatibility (existing products without meta.published should be considered published)
+  // Only explicitly set to false if meta.published === false
+  const published = meta.published === false ? false : true;
   return {
     id: row.id || row.slug,
     slug: row.slug,
@@ -23,7 +26,7 @@ function transformProduct(row: any): Product {
     checkoutLink: row.checkout_link,
     reviews: row.reviews || [],
     meta: meta,
-    published: meta.published === true, // Extract published status from meta
+    published: published, // Default to true unless explicitly set to false
     isFeatured: Boolean(row.is_featured),
     inStock: row.in_stock !== undefined ? Boolean(row.in_stock) : true,
   };
