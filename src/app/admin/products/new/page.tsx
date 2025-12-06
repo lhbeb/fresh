@@ -177,7 +177,7 @@ export default function NewProductPage() {
     });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, saveAsDraft: boolean = false) => {
     e.preventDefault();
     setError('');
     setSuccess('');
@@ -226,7 +226,7 @@ export default function NewProductPage() {
 
       // Build meta object
       const meta: any = {
-        published: formData.published, // Store published status in meta
+        published: saveAsDraft ? false : formData.published, // Store published status in meta (override if saving as draft)
       };
       ['Title', 'Description', 'Keywords', 'OgTitle', 'OgDescription', 'OgImage', 'TwitterTitle', 'TwitterDescription', 'TwitterImage']
         .forEach(key => {
@@ -292,7 +292,7 @@ export default function NewProductPage() {
       }
 
       const product = await response.json();
-      setSuccess('Product created successfully!');
+      setSuccess(saveAsDraft ? 'Product saved as draft!' : 'Product created successfully!');
       // Update URL to edit page without redirecting
       window.history.replaceState({}, '', `/admin/products/${product.slug}/edit`);
       // Reload the page to show the edit view
@@ -395,8 +395,19 @@ export default function NewProductPage() {
               </Link>
             )}
             
+            {/* Save as Draft Button */}
             <button
-              onClick={handleSubmit}
+              onClick={(e) => handleSubmit(e, true)}
+              disabled={loading}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-xl hover:bg-gray-700 disabled:opacity-50 shadow-sm"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {loading ? 'Saving...' : 'Save as Draft'}
+            </button>
+            
+            {/* Create Product Button */}
+            <button
+              onClick={(e) => handleSubmit(e, false)}
               disabled={loading}
               className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 disabled:opacity-50 shadow-sm"
             >
