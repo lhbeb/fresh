@@ -12,12 +12,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get email credentials from environment variables
+    const emailUser = process.env.EMAIL_USER;
+    const emailPass = process.env.EMAIL_PASS;
+
+    if (!emailUser || !emailPass) {
+      console.error('❌ Missing email environment variables: EMAIL_USER or EMAIL_PASS');
+      return NextResponse.json(
+        { error: 'Email service not configured' },
+        { status: 500 }
+      );
+    }
+
     // Create transporter for Gmail with app password (same as existing email routes)
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: 'arvaradodotcom@gmail.com',
-        pass: 'iwar xzav utnb bxyw',
+        user: emailUser,
+        pass: emailPass,
       },
       secure: false,
       tls: {
@@ -44,7 +56,7 @@ export async function POST(request: NextRequest) {
 
     // Email options
     const mailOptions = {
-      from: 'arvaradodotcom@gmail.com',
+      from: emailUser,
       to: 'contacthappydeel@gmail.com',
       subject: 'New Newsletter Subscription - HappyDeel',
       html: emailContent,

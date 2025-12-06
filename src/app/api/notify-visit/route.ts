@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Hardcoded Telegram Bot credentials (no environment variables needed)
-const TELEGRAM_BOT_TOKEN = '8103676783:AAGnnUDAZjYqVUtoaSyuTgdGReWWdVH_yrg';
-const TELEGRAM_CHAT_ID = '-1002806502052';
+// Get Telegram credentials from environment variables
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
 function deviceTypeEmoji(type: string) {
   if (type === 'Mobile') return '📱';
@@ -21,6 +21,12 @@ function countryCodeToFlagEmoji(countryCode: string) {
 
 export async function POST(req: NextRequest) {
   try {
+    // Check if Telegram is configured
+    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+      console.warn('⚠️ Telegram credentials not configured. Skipping notification.');
+      return NextResponse.json({ ok: true, skipped: true, reason: 'Telegram not configured' });
+    }
+
     const data = await req.json();
     const { device, deviceType, fingerprint, url, productTitle, productSlug, productPrice, action } = data;
 

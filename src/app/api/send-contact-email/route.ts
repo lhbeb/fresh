@@ -8,12 +8,24 @@ export async function POST(request: NextRequest) {
     // Get domain name from request headers
     const domain = request.headers.get('origin') || request.headers.get('referer') || 'https://happydeel.com';
 
+    // Get email credentials from environment variables
+    const emailUser = process.env.EMAIL_USER;
+    const emailPass = process.env.EMAIL_PASS;
+
+    if (!emailUser || !emailPass) {
+      console.error('❌ Missing email environment variables: EMAIL_USER or EMAIL_PASS');
+      return NextResponse.json(
+        { error: 'Email service not configured' },
+        { status: 500 }
+      );
+    }
+
     // Create transporter for Gmail with app password
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: 'arvaradodotcom@gmail.com',
-        pass: 'iwar xzav utnb bxyw',
+        user: emailUser,
+        pass: emailPass,
       },
       secure: false,
       tls: {
@@ -37,7 +49,7 @@ export async function POST(request: NextRequest) {
     `;
 
     const mailOptions = {
-      from: 'arvaradodotcom@gmail.com',
+      from: emailUser,
       to: 'contacthappydeel@gmail.com',
       subject: `Contact Form: ${subject}`,
       html: emailContent,

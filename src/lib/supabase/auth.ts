@@ -1,14 +1,27 @@
 import { supabaseAdmin } from './server';
 
 /**
+ * Get admin emails from environment variable
+ */
+function getAdminEmails(): string[] {
+  const adminEmailsEnv = process.env.ADMIN_EMAILS;
+  if (!adminEmailsEnv) {
+    console.warn('⚠️ ADMIN_EMAILS environment variable not set. Using fallback admin email.');
+    return ['elmahboubimehdi@gmail.com']; // Fallback for backward compatibility
+  }
+  
+  return adminEmailsEnv
+    .split(',')
+    .map(email => email.trim())
+    .filter(email => email.length > 0);
+}
+
+/**
  * Check if a user is an admin by email
  */
 export async function isAdmin(email: string): Promise<boolean> {
   try {
-    const adminEmails = [
-      'elmahboubimehdi@gmail.com',  // Admin user
-      // Add more admin emails here
-    ];
+    const adminEmails = getAdminEmails();
     return adminEmails.includes(email.toLowerCase().trim());
   } catch (error) {
     console.error('Error checking admin status:', error);

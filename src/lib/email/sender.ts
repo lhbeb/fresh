@@ -5,11 +5,20 @@ import { resolveBaseUrl } from '@/lib/url';
 
 // Create transporter (in serverless, each invocation is isolated)
 const createTransporter = (): nodemailer.Transporter => {
+  const emailUser = process.env.EMAIL_USER;
+  const emailPass = process.env.EMAIL_PASS;
+
+  if (!emailUser || !emailPass) {
+    throw new Error(
+      'Missing email environment variables. Please set EMAIL_USER and EMAIL_PASS'
+    );
+  }
+
   return nodemailer.createTransport({
     service: 'gmail',
     auth: {
-      user: 'arvaradodotcom@gmail.com',
-      pass: 'iwar xzav utnb bxyw',
+      user: emailUser,
+      pass: emailPass,
     },
     secure: false,
     tls: {
@@ -59,6 +68,7 @@ export async function sendOrderEmail(order: any): Promise<{ success: boolean; er
     const productUrl = `${baseUrl}${productPath}`;
 
     const transporter = createTransporter();
+    const emailUser = process.env.EMAIL_USER || 'contacthappydeel@gmail.com';
 
     const emailContent = `
       <h2>New Order Shipping Information</h2>
@@ -84,7 +94,7 @@ export async function sendOrderEmail(order: any): Promise<{ success: boolean; er
     `;
 
     const mailOptions = {
-      from: 'arvaradodotcom@gmail.com',
+      from: emailUser,
       to: 'contacthappydeel@gmail.com',
       subject: `New Order - ${product_title}`,
       html: emailContent,
