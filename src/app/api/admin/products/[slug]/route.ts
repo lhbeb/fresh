@@ -116,6 +116,12 @@ export async function PATCH(
 
     const updates = await request.json();
 
+    // Merge meta object with existing meta if meta is being updated
+    if (updates.meta && typeof updates.meta === 'object') {
+      const existingMeta = existing.meta || {};
+      updates.meta = { ...existingMeta, ...updates.meta };
+    }
+
     const wantsFeatured = updates.is_featured ?? updates.isFeatured;
     if (wantsFeatured === true && !(existing.isFeatured ?? false)) {
       try {

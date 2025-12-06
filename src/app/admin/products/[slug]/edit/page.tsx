@@ -238,8 +238,10 @@ export default function EditProductPage() {
       const existingMeta = product?.meta || {};
       const meta: any = {
         ...existingMeta, // Preserve existing meta fields
-        published: formData.published, // Store published status in meta
       };
+      // Always include published status
+      meta.published = formData.published;
+      // Add other meta fields if they have values
       ['Title', 'Description', 'Keywords', 'OgTitle', 'OgDescription', 'OgImage', 'TwitterTitle', 'TwitterDescription', 'TwitterImage']
         .forEach(key => {
           const val = formData[`meta${key}` as keyof typeof formData];
@@ -281,7 +283,7 @@ export default function EditProductPage() {
           in_stock: formData.in_stock ?? true,
           is_featured: formData.is_featured ?? false,
           reviews: processedReviews,
-          meta: Object.keys(meta).length ? meta : {},
+          meta: meta, // Always send meta object (even if empty, it will be merged properly on server)
         }),
       });
 

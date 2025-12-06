@@ -343,7 +343,10 @@ export async function updateProduct(
     }
     
     if (updates.reviews !== undefined) updateData.reviews = updates.reviews;
-    if (updates.meta !== undefined) updateData.meta = updates.meta;
+    // Meta should already be merged in the API route, so just use it directly
+    if (updates.meta !== undefined && updates.meta !== null && typeof updates.meta === 'object') {
+      updateData.meta = updates.meta;
+    }
     
     // Handle both in_stock and inStock (booleans can be false, so check for undefined)
     if (updates.in_stock !== undefined) updateData.in_stock = updates.in_stock;
@@ -360,6 +363,19 @@ export async function updateProduct(
       return existing;
     }
 
+    // Ensure meta is properly formatted as JSONB
+    if (updateData.meta && typeof updateData.meta === 'object') {
+      // Supabase expects JSONB to be a plain object, ensure it's serializable
+      try {
+        JSON.stringify(updateData.meta);
+      } catch (e) {
+        console.error('Invalid meta object structure:', e);
+        // Remove invalid meta and use existing
+        const existing = await getProductBySlug(slug, true);
+        updateData.meta = existing?.meta || {};
+      }
+    }
+
     const { data, error } = await supabaseAdmin
       .from('products')
       .update(updateData)
@@ -370,6 +386,7 @@ export async function updateProduct(
     if (error) {
       console.error('Error updating product:', error);
       console.error('Update data:', JSON.stringify(updateData, null, 2));
+      console.error('Product slug:', slug);
       console.error('Error details:', {
         message: error.message,
         details: error.details,
