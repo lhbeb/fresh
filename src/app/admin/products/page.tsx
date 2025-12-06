@@ -25,6 +25,7 @@ interface Product {
   checkoutLink?: string;
   isFeatured?: boolean;
   is_featured?: boolean;
+  published?: boolean;
 }
 
 type ViewMode = 'grid' | 'list';
@@ -36,6 +37,7 @@ export default function AdminProductsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'draft'>('all');
   const [featuredFilter, setFeaturedFilter] = useState<'all' | 'featured' | 'not_featured'>('all');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [currentPage, setCurrentPage] = useState(1);
@@ -77,6 +79,13 @@ export default function AdminProductsPage() {
   useEffect(() => {
     let filtered = [...products];
 
+    // Apply status filter (Published/Draft)
+    if (statusFilter === 'published') {
+      filtered = filtered.filter(p => p.published === true);
+    } else if (statusFilter === 'draft') {
+      filtered = filtered.filter(p => !p.published || p.published === false);
+    }
+
     // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
@@ -96,7 +105,7 @@ export default function AdminProductsPage() {
 
     setFilteredProducts(filtered);
     setCurrentPage(1);
-  }, [searchQuery, featuredFilter, products]);
+  }, [searchQuery, statusFilter, featuredFilter, products]);
 
   const handleDelete = async (slug: string) => {
     if (!confirm('Are you sure you want to delete this product?')) return;
@@ -183,7 +192,7 @@ export default function AdminProductsPage() {
   return (
     <AdminLayout 
       title="Products" 
-      subtitle={`${products.length} products • ${featuredCount}/${FEATURE_LIMIT} featured`}
+      subtitle={`${products.length} products • ${products.filter(p => p.published).length} published • ${products.filter(p => !p.published).length} drafts • ${featuredCount}/${FEATURE_LIMIT} featured`}
     >
       {/* Error Alert */}
         {error && (
@@ -197,6 +206,42 @@ export default function AdminProductsPage() {
           </button>
         </div>
       )}
+
+      {/* Status Tabs */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-1 mb-6">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setStatusFilter('all')}
+            className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+              statusFilter === 'all'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            All Products ({products.length})
+          </button>
+          <button
+            onClick={() => setStatusFilter('published')}
+            className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+              statusFilter === 'published'
+                ? 'bg-green-600 text-white shadow-sm'
+                : 'text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            Published ({products.filter(p => p.published).length})
+          </button>
+          <button
+            onClick={() => setStatusFilter('draft')}
+            className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+              statusFilter === 'draft'
+                ? 'bg-amber-600 text-white shadow-sm'
+                : 'text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            Draft ({products.filter(p => !p.published).length})
+          </button>
+        </div>
+      </div>
 
       {/* Toolbar */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6">
@@ -263,10 +308,12 @@ export default function AdminProductsPage() {
               </div>
 
       {/* Filter Status */}
-      {(searchQuery || featuredFilter !== 'all') && (
+      {(searchQuery || statusFilter !== 'all' || featuredFilter !== 'all') && (
         <div className="mb-4 px-4 py-2 bg-blue-50 border border-blue-200 rounded-xl">
           <div className="text-sm text-blue-700">
             Showing <strong>{filteredProducts.length}</strong> of <strong>{products.length}</strong> product{products.length !== 1 ? 's' : ''}
+            {statusFilter === 'published' && ` (${products.filter(p => p.published).length} published)`}
+            {statusFilter === 'draft' && ` (${products.filter(p => !p.published).length} drafts)`}
             {featuredFilter === 'featured' && ` (${featuredCount} featured)`}
           </div>
         </div>
@@ -308,13 +355,20 @@ export default function AdminProductsPage() {
                   </div>
                 )}
 
-                {/* Featured Badge */}
-                {(product.isFeatured || product.is_featured) && (
-                  <div className="absolute top-2 left-2 px-2 py-1 bg-amber-500 text-white text-xs font-medium rounded-full flex items-center gap-1">
-                    <Star className="h-3 w-3 fill-white" />
-                    Featured
-          </div>
-        )}
+                {/* Status Badges */}
+                <div className="absolute top-2 left-2 flex flex-col gap-1">
+                  {!product.published && (
+                    <div className="px-2 py-1 bg-amber-500 text-white text-xs font-medium rounded-full">
+                      Draft
+                    </div>
+                  )}
+                  {(product.isFeatured || product.is_featured) && (
+                    <div className="px-2 py-1 bg-blue-500 text-white text-xs font-medium rounded-full flex items-center gap-1">
+                      <Star className="h-3 w-3 fill-white" />
+                      Featured
+                    </div>
+                  )}
+                </div>
 
                 {/* Quick Actions Overlay */}
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
@@ -386,6 +440,7 @@ export default function AdminProductsPage() {
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Product</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Price</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Preview Checkout</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Featured</th>
@@ -418,6 +473,19 @@ export default function AdminProductsPage() {
                           </div>
                         </div>
                       </td>
+                  <td className="px-4 py-3">
+                    {product.published ? (
+                      <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+                        Published
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
+                        <span className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
+                        Draft
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <span className="font-semibold text-gray-900">${product.price.toFixed(2)}</span>
                       </td>

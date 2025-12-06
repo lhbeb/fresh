@@ -41,7 +41,9 @@ export interface Product {
     twitterTitle?: string;
     twitterDescription?: string;
     twitterImage?: string;
+    published?: boolean;
   };
+  published?: boolean; // Extracted from meta.published for easier access
   isFeatured?: boolean;
   inStock?: boolean;
 }

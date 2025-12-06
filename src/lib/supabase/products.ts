@@ -5,6 +5,7 @@ import type { Review } from '@/types/product';
 
 // Transform Supabase row to Product type
 function transformProduct(row: any): Product {
+  const meta = row.meta || {};
   return {
     id: row.id || row.slug,
     slug: row.slug,
@@ -21,7 +22,8 @@ function transformProduct(row: any): Product {
     currency: row.currency || 'USD',
     checkoutLink: row.checkout_link,
     reviews: row.reviews || [],
-    meta: row.meta || {},
+    meta: meta,
+    published: meta.published === true, // Extract published status from meta
     isFeatured: Boolean(row.is_featured),
     inStock: row.in_stock !== undefined ? Boolean(row.in_stock) : true,
   };
