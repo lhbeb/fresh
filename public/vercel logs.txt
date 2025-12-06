@@ -1,0 +1,67 @@
+[06:30:29.152] Running build in Washington, D.C., USA (East) – iad1
+[06:30:29.153] Build machine configuration: 2 cores, 8 GB
+[06:30:29.236] Cloning github.com/elmmahboubi/rpayep (Branch: main, Commit: d3668f5)
+[06:30:29.659] Previous build caches not available
+[06:30:31.950] Cloning completed: 2.714s
+[06:30:32.813] Running "vercel build"
+[06:30:33.752] Vercel CLI 44.2.13
+[06:30:34.119] Installing dependencies...
+[06:30:47.011] 
+[06:30:47.012] added 402 packages in 13s
+[06:30:47.013] 
+[06:30:47.013] 157 packages are looking for funding
+[06:30:47.013]   run `npm fund` for details
+[06:30:47.057] Detected Next.js version: 15.3.5
+[06:30:47.061] Running "npm run build"
+[06:30:47.179] 
+[06:30:47.179] > gemini@0.1.0 build
+[06:30:47.179] > next build
+[06:30:47.179] 
+[06:30:47.788] Attention: Next.js now collects completely anonymous telemetry regarding usage.
+[06:30:47.789] This information is used to shape Next.js' roadmap and prioritize features.
+[06:30:47.789] You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+[06:30:47.790] https://nextjs.org/telemetry
+[06:30:47.790] 
+[06:30:47.890]    ▲ Next.js 15.3.5
+[06:30:47.891] 
+[06:30:47.919]    Creating an optimized production build ...
+[06:31:01.251]  ✓ Compiled successfully in 10.0s
+[06:31:01.256]    Linting and checking validity of types ...
+[06:31:06.537] 
+[06:31:06.537] ./src/app/checkout/page.tsx
+[06:31:06.538] 253:19  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+[06:31:06.538] 433:23  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+[06:31:06.538] 
+[06:31:06.538] ./src/app/products/[slug]/page.tsx
+[06:31:06.538] 324:17  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+[06:31:06.538] 342:21  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+[06:31:06.539] 609:15  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+[06:31:06.539] 
+[06:31:06.539] ./src/components/HomeReviews.tsx
+[06:31:06.539] 129:21  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+[06:31:06.539] 
+[06:31:06.539] ./src/components/InstagramWidget.tsx
+[06:31:06.540] 13:15  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+[06:31:06.540] 
+[06:31:06.540] ./src/components/ProductReviews.tsx
+[06:31:06.540] 195:17  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+[06:31:06.540] 242:29  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+[06:31:06.541] 297:13  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+[06:31:06.541] 
+[06:31:06.541] info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/app/api-reference/config/eslint#disabling-rules
+[06:31:08.671] Failed to compile.
+[06:31:08.672] 
+[06:31:08.672] ./src/app/api/test-email/route.ts:37:12
+[06:31:08.672] Type error: Cannot find name 'NextResponse'. Did you mean 'Response'?
+[06:31:08.672] 
+[06:31:08.672] [0m [90m 35 |[39m     console[33m.[39mlog([32m'Test email sent successfully:'[39m[33m,[39m info[33m.[39mmessageId)[33m;[39m[0m
+[06:31:08.672] [0m [90m 36 |[39m[0m
+[06:31:08.672] [0m[31m[1m>[22m[39m[90m 37 |[39m     [36mreturn[39m [33mNextResponse[39m[33m.[39mjson({ [0m
+[06:31:08.672] [0m [90m    |[39m            [31m[1m^[22m[39m[0m
+[06:31:08.672] [0m [90m 38 |[39m       success[33m:[39m [36mtrue[39m[33m,[39m [0m
+[06:31:08.672] [0m [90m 39 |[39m       messageId[33m:[39m info[33m.[39mmessageId[33m,[39m[0m
+[06:31:08.673] [0m [90m 40 |[39m       message[33m:[39m [32m'Test email sent successfully'[39m[0m
+[06:31:08.691] Next.js build worker exited with code: 1 and signal: null
+[06:31:08.713] Error: Command "npm run build" exited with 1
+[06:31:08.913] 
+[06:31:12.306] Exiting build container

@@ -1,0 +1,46 @@
+{
+  "name": "gemini",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "migrate": "tsx scripts/migrate-products-to-supabase.ts",
+    "upload-images": "tsx scripts/upload-images-to-supabase.ts",
+    "test-login": "tsx scripts/test-admin-login.ts",
+    "create-admin": "tsx scripts/create-admin-user.ts",
+    "import-products": "tsx scripts/import-products-with-images.ts",
+    "test-order": "tsx scripts/test-order-flow.ts"
+  },
+  "dependencies": {
+    "@fingerprintjs/fingerprintjs": "^4.6.2",
+    "@supabase/supabase-js": "^2.78.0",
+    "@types/nodemailer": "^6.4.17",
+    "adm-zip": "^0.5.16",
+    "gsap": "^3.13.0",
+    "lucide-react": "^0.525.0",
+    "next": "15.3.5",
+    "nodemailer": "^7.0.5",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-loading-indicators": "^1.0.1",
+    "server-only": "^0.0.1"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@types/adm-zip": "^0.5.7",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/yauzl": "^2.10.3",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^9",
+    "eslint-config-next": "15.3.5",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.20.6",
+    "typescript": "^5"
+  }
+}

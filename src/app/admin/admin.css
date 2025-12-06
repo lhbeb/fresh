@@ -1,0 +1,6 @@
+/* Admin-only styles - isolated from public website */
+.admin-body {
+  margin: 0;
+  padding: 0;
+}
+
