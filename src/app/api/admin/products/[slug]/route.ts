@@ -108,7 +108,7 @@ export async function PATCH(
     }
 
     const { slug } = await params;
-    const existing = await getProductBySlug(slug);
+    const existing = await getProductBySlug(slug, true); // Admin view - include drafts
 
     if (!existing) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
