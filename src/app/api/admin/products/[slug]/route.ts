@@ -76,7 +76,7 @@ export async function GET(
 ) {
   try {
     const { slug } = await params;
-    const product = await getProductBySlug(slug);
+    const product = await getProductBySlug(slug, true); // Admin view - include drafts
 
     if (!product) {
       return NextResponse.json(

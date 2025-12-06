@@ -235,7 +235,7 @@ export default function AdminProductsPage() {
             className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
               statusFilter === 'draft'
                 ? 'bg-amber-600 text-white shadow-sm'
-                : 'text-gray-600 hover:bg-gray-50'
+                : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
             }`}
           >
             Draft ({products.filter(p => !p.published).length})

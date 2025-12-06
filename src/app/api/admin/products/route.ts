@@ -72,7 +72,7 @@ async function getAdminAuth(request: NextRequest) {
   return headerToken;
 }
 
-// GET - List all products
+// GET - List all products (admin view - includes drafts)
 export async function GET(request: NextRequest) {
   try {
     // Optional: Add auth check here if needed
@@ -81,7 +81,8 @@ export async function GET(request: NextRequest) {
     //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     // }
 
-    const products = await getProducts();
+    // Admin view should include drafts
+    const products = await getProducts(true);
     return NextResponse.json(products);
   } catch (error) {
     console.error('Error fetching products:', error);

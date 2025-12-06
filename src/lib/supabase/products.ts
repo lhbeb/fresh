@@ -34,8 +34,9 @@ function transformProduct(row: any): Product {
 
 /**
  * Get all products from Supabase
+ * @param includeDrafts - If true, includes draft products. Defaults to false (only published products).
  */
-export async function getProducts(): Promise<Product[]> {
+export async function getProducts(includeDrafts: boolean = false): Promise<Product[]> {
   try {
     const { data, error } = await supabaseAdmin
       .from('products')
@@ -47,7 +48,16 @@ export async function getProducts(): Promise<Product[]> {
       return [];
     }
 
-    return (data || []).map(transformProduct);
+    const products = (data || []).map(transformProduct);
+    
+    // Filter out drafts unless explicitly requested (for admin views)
+    if (!includeDrafts) {
+      // Only return published products (published !== false)
+      // Products without meta.published are considered published (backward compatibility)
+      return products.filter(p => p.published !== false);
+    }
+
+    return products;
   } catch (error) {
     console.error('Error loading products:', error);
     return [];
@@ -56,8 +66,9 @@ export async function getProducts(): Promise<Product[]> {
 
 /**
  * Get a single product by slug
+ * @param includeDrafts - If true, includes draft products. Defaults to false (only published products).
  */
-export async function getProductBySlug(slug: string): Promise<Product | null> {
+export async function getProductBySlug(slug: string, includeDrafts: boolean = false): Promise<Product | null> {
   try {
     if (!slug || typeof slug !== 'string' || slug.trim() === '') {
       console.error('Invalid slug provided:', slug);
@@ -82,7 +93,14 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
       return null;
     }
 
-    return transformProduct(data);
+    const product = transformProduct(data);
+    
+    // Filter out drafts unless explicitly requested (for admin views)
+    if (!includeDrafts && product.published === false) {
+      return null; // Don't return draft products to public
+    }
+
+    return product;
   } catch (error) {
     console.error(`Error loading product ${slug}:`, error);
     return null;
@@ -91,6 +109,7 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
 
 /**
  * Get products by category
+ * Only returns published products (drafts are excluded)
  */
 export async function getProductsByCategory(category: string): Promise<Product[]> {
   try {
@@ -105,7 +124,10 @@ export async function getProductsByCategory(category: string): Promise<Product[]
       return [];
     }
 
-    return (data || []).map(transformProduct);
+    const products = (data || []).map(transformProduct);
+    
+    // Filter out drafts - only return published products
+    return products.filter(p => p.published !== false);
   } catch (error) {
     console.error('Error loading products by category:', error);
     return [];
@@ -134,7 +156,10 @@ export async function searchProducts(query: string): Promise<Product[]> {
       return [];
     }
 
-    return (data || []).map(transformProduct);
+    const products = (data || []).map(transformProduct);
+    
+    // Filter out drafts - only return published products
+    return products.filter(p => p.published !== false);
   } catch (error) {
     console.error('Error searching products:', error);
     return [];
@@ -143,6 +168,7 @@ export async function searchProducts(query: string): Promise<Product[]> {
 
 /**
  * Get featured products (first 4 by default)
+ * Only returns published featured products (drafts are excluded)
  */
 export async function getFeaturedProducts(): Promise<Product[]> {
   try {
@@ -158,7 +184,10 @@ export async function getFeaturedProducts(): Promise<Product[]> {
       return [];
     }
 
-    return (data || []).map(transformProduct);
+    const products = (data || []).map(transformProduct);
+    
+    // Filter out drafts - only return published products
+    return products.filter(p => p.published !== false);
   } catch (error) {
     console.error('Error loading featured products:', error);
     return [];
