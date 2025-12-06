@@ -354,8 +354,9 @@ export async function updateProduct(
     if (updates.isFeatured !== undefined) updateData.is_featured = updates.isFeatured;
 
     // If no fields to update (only updated_at), return existing product
+    // Use includeDrafts: true since this is an admin update operation
     if (Object.keys(updateData).length === 1) {
-      const existing = await getProductBySlug(slug);
+      const existing = await getProductBySlug(slug, true);
       return existing;
     }
 

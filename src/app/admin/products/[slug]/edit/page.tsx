@@ -234,7 +234,10 @@ export default function EditProductPage() {
 
       if (!finalImages.length) throw new Error('At least one image is required');
 
+      // Build meta object, preserving existing meta data
+      const existingMeta = product?.meta || {};
       const meta: any = {
+        ...existingMeta, // Preserve existing meta fields
         published: formData.published, // Store published status in meta
       };
       ['Title', 'Description', 'Keywords', 'OgTitle', 'OgDescription', 'OgImage', 'TwitterTitle', 'TwitterDescription', 'TwitterImage']
@@ -287,11 +290,26 @@ export default function EditProductPage() {
         throw new Error(err.error || 'Update failed');
       }
 
+      const updatedProduct = await response.json();
+      
+      // Update local product state with the response
+      if (updatedProduct) {
+        setProduct(updatedProduct);
+        // Update formData with the response to ensure consistency
+        setFormData(prev => ({
+          ...prev,
+          published: updatedProduct.meta?.published ?? updatedProduct.published ?? prev.published,
+        }));
+      }
+
       setSuccess('Product saved!');
       setHasChanges(false);
       
       if (finalSlug !== slug) {
         setTimeout(() => router.push(`/admin/products/${finalSlug}/edit`), 1000);
+      } else {
+        // Refetch product to ensure we have the latest data (especially if published status changed)
+        await fetchProduct();
       }
     } catch (err: any) {
       setError(err.message);
