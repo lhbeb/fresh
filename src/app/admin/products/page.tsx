@@ -83,7 +83,7 @@ export default function AdminProductsPage() {
     if (statusFilter === 'published') {
       filtered = filtered.filter(p => p.published === true);
     } else if (statusFilter === 'draft') {
-      filtered = filtered.filter(p => !p.published || p.published === false);
+      filtered = filtered.filter(p => p.published !== true);
     }
 
     // Apply search filter
