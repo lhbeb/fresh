@@ -7,7 +7,7 @@ import {
   ArrowLeft, Save, Plus, X, Loader2, Package, DollarSign,
   Tag, Star, Image as ImageIcon, Search, CheckCircle, AlertCircle, 
   ChevronDown, Trash2, Eye, Globe, Twitter, Info, User, MapPin,
-  Calendar, ThumbsUp
+  Calendar, ThumbsUp, EyeOff
 } from 'lucide-react';
 import type { Product } from '@/types/product';
 import ImageUploader, { ImageUploaderRef, UploadStatus } from '@/components/admin/ImageUploader';
@@ -126,7 +126,7 @@ export default function EditProductPage() {
     slug: '', title: '', description: '', price: '', original_price: '',
     brand: '', category: '', condition: '', payee_email: '', checkout_link: '',
     currency: 'USD', images: '', rating: '0', review_count: '0',
-    in_stock: true, is_featured: false,
+    in_stock: true, is_featured: false, published: false,
     metaTitle: '', metaDescription: '', metaKeywords: '',
     metaOgTitle: '', metaOgDescription: '', metaOgImage: '',
     metaTwitterTitle: '', metaTwitterDescription: '', metaTwitterImage: '',
@@ -171,6 +171,7 @@ export default function EditProductPage() {
         review_count: data.reviewCount?.toString() || data.review_count?.toString() || '0',
         in_stock: data.inStock ?? data.in_stock ?? true,
         is_featured: data.isFeatured ?? data.is_featured ?? false,
+        published: data.meta?.published ?? false,
         metaTitle: data.meta?.title || '',
         metaDescription: data.meta?.description || '',
         metaKeywords: data.meta?.keywords || '',
@@ -233,7 +234,9 @@ export default function EditProductPage() {
 
       if (!finalImages.length) throw new Error('At least one image is required');
 
-      const meta: any = {};
+      const meta: any = {
+        published: formData.published, // Store published status in meta
+      };
       ['Title', 'Description', 'Keywords', 'OgTitle', 'OgDescription', 'OgImage', 'TwitterTitle', 'TwitterDescription', 'TwitterImage']
         .forEach(key => {
           const val = formData[`meta${key}` as keyof typeof formData];
@@ -352,7 +355,7 @@ export default function EditProductPage() {
     return (
     <AdminLayout>
       {/* Compact Sticky Header */}
-      <div className="sticky top-0 z-30 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 bg-white border-b border-gray-200 mb-6">
+      <div className="sticky top-0 z-50 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm mb-6">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
             <Link href="/admin/products" className="p-2 -ml-2 hover:bg-gray-100 rounded-lg">
@@ -371,6 +374,33 @@ export default function EditProductPage() {
                 Unsaved
               </span>
             )}
+            
+            {/* Publish/Unpublish Toggle */}
+            <button
+              type="button"
+              onClick={() => {
+                setFormData(prev => ({ ...prev, published: !prev.published }));
+                setHasChanges(true);
+              }}
+              className={`inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-xl transition-colors ${
+                formData.published
+                  ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {formData.published ? (
+                <>
+                  <Eye className="h-4 w-4" />
+                  <span className="hidden sm:inline">Published</span>
+                </>
+              ) : (
+                <>
+                  <EyeOff className="h-4 w-4" />
+                  <span className="hidden sm:inline">Not Published</span>
+                </>
+              )}
+            </button>
+            
             <Link
               href={`/products/${slug}`}
               target="_blank"

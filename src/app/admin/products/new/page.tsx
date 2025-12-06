@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { 
   ArrowLeft, Save, Plus, X, Loader2, Package, DollarSign,
   Tag, Star, Image as ImageIcon, Search, CheckCircle, AlertCircle, 
-  ChevronDown, Trash2, Eye, Globe, Twitter, Info
+  ChevronDown, Trash2, Eye, Globe, Twitter, Info, EyeOff
 } from 'lucide-react';
 import ImageUploader, { ImageUploaderRef, UploadStatus } from '@/components/admin/ImageUploader';
 import AdminLayout from '@/components/AdminLayout';
@@ -129,6 +129,7 @@ export default function NewProductPage() {
     rating: '0',
     review_count: '0',
     is_featured: false,
+    published: false,
     metaTitle: '',
     metaDescription: '',
     metaKeywords: '',
@@ -224,7 +225,9 @@ export default function NewProductPage() {
       const uniqueImages = Array.from(new Set(finalImages));
 
       // Build meta object
-      const meta: any = {};
+      const meta: any = {
+        published: formData.published, // Store published status in meta
+      };
       ['Title', 'Description', 'Keywords', 'OgTitle', 'OgDescription', 'OgImage', 'TwitterTitle', 'TwitterDescription', 'TwitterImage']
         .forEach(key => {
           const val = formData[`meta${key}` as keyof typeof formData];
@@ -289,10 +292,13 @@ export default function NewProductPage() {
       }
 
       const product = await response.json();
-      setSuccess('Product created successfully! Redirecting...');
+      setSuccess('Product created successfully!');
+      // Update URL to edit page without redirecting
+      window.history.replaceState({}, '', `/admin/products/${product.slug}/edit`);
+      // Reload the page to show the edit view
       setTimeout(() => {
-      router.push(`/admin/products/${product.slug}/edit`);
-      }, 1000);
+        window.location.reload();
+      }, 500);
     } catch (err: any) {
       setError(err.message || 'Failed to create product');
     } finally {
@@ -341,7 +347,7 @@ export default function NewProductPage() {
   return (
     <AdminLayout>
       {/* Compact Sticky Header */}
-      <div className="sticky top-0 z-30 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 bg-white border-b border-gray-200 mb-6">
+      <div className="sticky top-0 z-50 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm mb-6">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
             <Link href="/admin/products" className="p-2 -ml-2 hover:bg-gray-100 rounded-lg">
@@ -354,15 +360,50 @@ export default function NewProductPage() {
             </div>
 
           <div className="flex items-center gap-2">
-                  <button
+            {/* Publish/Unpublish Toggle */}
+            <button
+              type="button"
+              onClick={() => updateField('published', !formData.published)}
+              className={`inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-xl transition-colors ${
+                formData.published
+                  ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {formData.published ? (
+                <>
+                  <Eye className="h-4 w-4" />
+                  <span className="hidden sm:inline">Published</span>
+                </>
+              ) : (
+                <>
+                  <EyeOff className="h-4 w-4" />
+                  <span className="hidden sm:inline">Not Published</span>
+                </>
+              )}
+            </button>
+            
+            {/* Preview Button - only show if product has a slug */}
+            {formData.slug && (
+              <Link
+                href={`/products/${formData.slug}`}
+                target="_blank"
+                className="p-2 hover:bg-gray-100 rounded-lg"
+                title="Preview"
+              >
+                <Eye className="h-5 w-5 text-gray-500" />
+              </Link>
+            )}
+            
+            <button
               onClick={handleSubmit}
               disabled={loading}
               className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 disabled:opacity-50 shadow-sm"
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               {loading ? 'Creating...' : 'Create Product'}
-                  </button>
-                </div>
+            </button>
+          </div>
         </div>
               </div>
 
