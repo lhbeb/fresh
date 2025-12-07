@@ -257,13 +257,13 @@ export async function createProduct(productData: {
 
     if (error) {
       console.error('Error creating product:', error);
-      return null;
+      throw error;
     }
 
     return transformProduct(data);
   } catch (error) {
     console.error('Error creating product:', error);
-    return null;
+    throw error;
   }
 }
 
@@ -393,12 +393,12 @@ export async function updateProduct(
         hint: error.hint,
         code: error.code,
       });
-      return null;
+      throw error;
     }
 
     if (!data) {
       console.error('No data returned from update');
-      return null;
+      throw new Error('No data returned from update');
     }
 
     return transformProduct(data);
@@ -407,7 +407,7 @@ export async function updateProduct(
     if (error instanceof Error) {
       console.error('Error stack:', error.stack);
     }
-    return null;
+    throw error;
   }
 }
 
