@@ -116,10 +116,38 @@ export async function PATCH(
 
     const updates = await request.json();
 
+    // Helper function to check if a value is meaningful (not empty string, null, or undefined)
+    const hasValue = (value: any): boolean => {
+      if (value === undefined || value === null) return false;
+      if (typeof value === 'string' && value.trim() === '') return false;
+      if (Array.isArray(value) && value.length === 0) return false;
+      return true;
+    };
+
+    // Clean up updates: remove empty strings for required fields to prevent NOT NULL constraint violations
+    const cleanedUpdates: any = {};
+    Object.keys(updates).forEach(key => {
+      const value = updates[key];
+      // For required NOT NULL fields, only include if they have meaningful values
+      const requiredFields = ['title', 'description', 'condition', 'category', 'brand', 'payee_email', 'checkout_link'];
+      if (requiredFields.includes(key)) {
+        if (hasValue(value)) {
+          cleanedUpdates[key] = value;
+        }
+        // Skip empty strings for required fields
+      } else {
+        // For other fields, include them (they might be optional or have defaults)
+        cleanedUpdates[key] = value;
+      }
+    });
+
     // Merge meta object with existing meta if meta is being updated
-    if (updates.meta && typeof updates.meta === 'object') {
+    if (cleanedUpdates.meta && typeof cleanedUpdates.meta === 'object' && Object.keys(cleanedUpdates.meta).length > 0) {
       const existingMeta = existing.meta || {};
-      updates.meta = { ...existingMeta, ...updates.meta };
+      cleanedUpdates.meta = { ...existingMeta, ...cleanedUpdates.meta };
+    } else if (cleanedUpdates.meta && Object.keys(cleanedUpdates.meta).length === 0) {
+      // If meta is an empty object, don't update it (preserve existing)
+      delete cleanedUpdates.meta;
     }
 
     const wantsFeatured = updates.is_featured ?? updates.isFeatured;
@@ -132,7 +160,7 @@ export async function PATCH(
       }
     }
 
-    const product = await updateProduct(slug, updates);
+    const product = await updateProduct(slug, cleanedUpdates);
 
     if (!product) {
       // Log more details for debugging
