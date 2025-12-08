@@ -33,11 +33,11 @@ const SameDayShipping: React.FC<SameDayShippingProps> = ({ fullWidth = false, co
           {/* Right Section - Content */}
           <div className="md:w-[55%] bg-blue-700 text-white p-12 flex flex-col justify-center">
             <h1 className="text-4xl md:text-5xl font-bold leading-tight mb-6 text-[#ffef02]">
-              Same Day Shipping
+              Same-Day Shipping
             </h1>
             
             <h3 className="text-lg leading-relaxed font-normal mb-12">
-              We work around the hour to fulfill your orders on time and ship it on the same day
+              Thanks to our dedicated warehouse team, your orders are prepared with care and sent out the very same day. We&apos;re proud of the people who make this possible.
             </h3>
             <Link 
               href="/shipping-policy" 
