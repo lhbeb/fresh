@@ -20,11 +20,12 @@ const SameDayShipping: React.FC<SameDayShippingProps> = ({ fullWidth = false, co
           <div className="md:w-[45%] relative">
             <div className="relative w-full min-h-[400px]">
               <Image
-                src="/delivery-guy.png"
+                src="/delivery-guy.png?v=2"
                 alt="HappyDeel delivery person"
                 fill
                 className="object-cover"
                 priority
+                unoptimized
               />
             </div>
           </div>
@@ -36,7 +37,7 @@ const SameDayShipping: React.FC<SameDayShippingProps> = ({ fullWidth = false, co
             </h1>
             
             <h3 className="text-lg leading-relaxed font-normal mb-12">
-              Order by 2:00 PM EST and we&apos;ll process, pack, and ship your order the same day. At <strong>HappyDeel</strong>, we deliver speed and reliability you can count on with trusted delivery partners.
+              We work around the hour to fulfill your orders on time and ship it on the same day
             </h3>
             <Link 
               href="/shipping-policy" 
