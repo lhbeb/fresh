@@ -41,6 +41,13 @@ function revalidateProductPaths(slug?: string) {
 
 // Helper to get auth from request
 async function getAdminAuth(request: NextRequest) {
+  // Bypass authentication in development if enabled
+  const { shouldBypassAuth } = await import('@/lib/supabase/auth');
+  if (shouldBypassAuth()) {
+    console.log('🔓 [AUTH] Bypassing authentication for API request');
+    return 'dev-bypass-token'; // Return a mock token for dev mode
+  }
+
   // Check for admin_token cookie first
   const token = request.cookies.get('admin_token')?.value;
   

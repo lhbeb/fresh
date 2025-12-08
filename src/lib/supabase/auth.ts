@@ -1,6 +1,38 @@
 import { supabaseAdmin } from './server';
 
 /**
+ * Check if authentication should be bypassed in development
+ * Set DISABLE_AUTH_IN_DEV=true in .env.local to bypass authentication
+ */
+export function shouldBypassAuth(): boolean {
+  // Debug logging
+  const nodeEnv = process.env.NODE_ENV;
+  const disableAuth = process.env.DISABLE_AUTH_IN_DEV;
+  
+  console.log('🔍 [AUTH DEBUG] Environment check:', {
+    NODE_ENV: nodeEnv,
+    DISABLE_AUTH_IN_DEV: disableAuth,
+    type: typeof disableAuth,
+    allEnvKeys: Object.keys(process.env).filter(k => k.includes('AUTH') || k.includes('DISABLE'))
+  });
+  
+  // Only bypass in non-production environments
+  if (nodeEnv === 'production') {
+    console.log('🔒 [AUTH] Production mode - authentication required');
+    return false;
+  }
+  
+  // Check explicit environment variable
+  if (disableAuth === 'true' || disableAuth === '1') {
+    console.log('🔓 [AUTH] ✅ Authentication bypassed for local development');
+    return true;
+  }
+  
+  console.log('🔒 [AUTH] Authentication NOT bypassed - DISABLE_AUTH_IN_DEV is:', disableAuth);
+  return false;
+}
+
+/**
  * Get admin emails from environment variable
  */
 function getAdminEmails(): string[] {
@@ -20,6 +52,11 @@ function getAdminEmails(): string[] {
  * Check if a user is an admin by email
  */
 export async function isAdmin(email: string): Promise<boolean> {
+  // Bypass admin check in development if auth is disabled
+  if (shouldBypassAuth()) {
+    return true;
+  }
+  
   try {
     const adminEmails = getAdminEmails();
     return adminEmails.includes(email.toLowerCase().trim());

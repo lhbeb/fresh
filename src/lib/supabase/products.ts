@@ -257,13 +257,13 @@ export async function createProduct(productData: {
 
     if (error) {
       console.error('Error creating product:', error);
-      throw error;
+      return null;
     }
 
     return transformProduct(data);
   } catch (error) {
     console.error('Error creating product:', error);
-    throw error;
+    return null;
   }
 }
 
@@ -376,38 +376,87 @@ export async function updateProduct(
       }
     }
 
+    // First, check if the product exists
+    console.log('🔍 Checking if product exists with slug:', slug);
+    const { data: checkData, error: checkError } = await supabaseAdmin
+      .from('products')
+      .select('slug, in_stock')
+      .eq('slug', slug);
+    
+    console.log('🔍 Product check result:', { 
+      found: checkData?.length || 0, 
+      error: checkError?.message,
+      data: checkData?.[0]
+    });
+    
+    if (!checkData || checkData.length === 0) {
+      console.error('❌ Product not found with slug:', slug);
+      
+      // List some products to verify database connection
+      const { data: sampleProducts } = await supabaseAdmin
+        .from('products')
+        .select('slug')
+        .limit(5);
+      console.log('📋 Sample products in database:', sampleProducts?.map(p => p.slug));
+      
+      return null;
+    }
+
+    // Perform the update - returns array of updated rows
+    console.log('📝 Performing update with data:', JSON.stringify(updateData, null, 2));
     const { data, error } = await supabaseAdmin
       .from('products')
       .update(updateData)
       .eq('slug', slug)
-      .select()
-      .single();
+      .select();
 
     if (error) {
-      console.error('Error updating product:', error);
-      console.error('Update data:', JSON.stringify(updateData, null, 2));
-      console.error('Product slug:', slug);
-      console.error('Error details:', {
+      console.error('❌ [UPDATE-PRODUCT] Supabase error:', {
         message: error.message,
+        code: error.code,
         details: error.details,
         hint: error.hint,
-        code: error.code,
+        slug: slug
       });
-      throw error;
+      console.error('❌ [UPDATE-PRODUCT] Update data:', JSON.stringify(updateData, null, 2));
+      
+      // Check if it's an RLS policy issue
+      if (error.code === 'PGRST116' || error.message.includes('0 rows') || error.message.includes('Cannot coerce')) {
+        console.error('❌ [UPDATE-PRODUCT] RLS POLICY ISSUE DETECTED!');
+        console.error('❌ [UPDATE-PRODUCT] The products table likely has RLS enabled but no UPDATE policy.');
+        console.error('❌ [UPDATE-PRODUCT] Run this SQL: CREATE POLICY "Allow all updates for service role" ON products FOR UPDATE USING (true) WITH CHECK (true);');
+      }
+      
+      return null;
     }
 
-    if (!data) {
-      console.error('No data returned from update');
-      throw new Error('No data returned from update');
+    // Check if any rows were updated
+    if (!data || data.length === 0) {
+      console.error('❌ [UPDATE-PRODUCT] Update returned 0 rows for slug:', slug);
+      console.error('❌ [UPDATE-PRODUCT] Possible causes:');
+      console.error('   1. RLS policy is blocking the UPDATE operation');
+      console.error('   2. The product slug does not match any rows');
+      console.error('   3. A required column is missing in the database');
+      console.error('❌ [UPDATE-PRODUCT] Verify RLS policies exist: SELECT * FROM pg_policies WHERE tablename = \'products\';');
+      
+      // Verify product still exists
+      const { data: verifyProduct } = await supabaseAdmin
+        .from('products')
+        .select('slug, in_stock')
+        .eq('slug', slug);
+      console.log('🔍 [UPDATE-PRODUCT] Verification query result:', verifyProduct);
+      
+      return null;
     }
 
-    return transformProduct(data);
+    console.log('✅ Product updated successfully:', data[0]?.slug);
+    return transformProduct(data[0]);
   } catch (error) {
     console.error('Error updating product:', error);
     if (error instanceof Error) {
       console.error('Error stack:', error.stack);
     }
-    throw error;
+    return null;
   }
 }
 

@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { 
   Package, Search, Plus, Edit, Trash2, ExternalLink, 
   Filter, Grid3X3, List, MoreVertical, Eye, X,
-  ChevronLeft, ChevronRight, RefreshCw, AlertCircle, Star
+  ChevronLeft, ChevronRight, RefreshCw, AlertCircle, Star, PackageX, PackageCheck
 } from 'lucide-react';
 import AdminLayout from '@/components/AdminLayout';
 import AdminLoading from '@/components/AdminLoading';
@@ -20,7 +20,7 @@ interface Product {
   original_price?: number;
   images: string[];
   category?: string;
-  in_stock?: boolean;
+  inStock?: boolean;
   created_at: string;
   checkoutLink?: string;
   isFeatured?: boolean;
@@ -43,6 +43,7 @@ export default function AdminProductsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingFeatured, setTogglingFeatured] = useState<string | null>(null);
+  const [togglingStock, setTogglingStock] = useState<string | null>(null);
   const [featuredCount, setFeaturedCount] = useState(0);
   const FEATURE_LIMIT = 6;
   const itemsPerPage = 12;
@@ -176,6 +177,56 @@ export default function AdminProductsPage() {
       setError(err.message || 'Failed to toggle featured status');
     } finally {
       setTogglingFeatured(null);
+    }
+  };
+
+  const handleToggleStock = async (slug: string) => {
+    const product = products.find(p => p.slug === slug);
+    if (!product) return;
+
+    const isCurrentlyInStock = product.inStock !== false;
+
+    setTogglingStock(slug);
+    setError('');
+
+    try {
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch(`/api/admin/products/${encodeURIComponent(slug)}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        },
+        body: JSON.stringify({
+          inStock: !isCurrentlyInStock
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errorMsg = errorData.error || errorData.details || 'Failed to update product';
+        console.error('❌ [MARK-SOLD-OUT] Error response:', errorData);
+        throw new Error(errorMsg);
+      }
+
+      const result = await response.json();
+      
+      // Update local state - the API returns inStock (camelCase)
+      const newInStock = result.inStock !== undefined ? result.inStock : !isCurrentlyInStock;
+      setProducts(prev => prev.map(p => 
+        p.slug === slug 
+          ? { ...p, inStock: newInStock }
+          : p
+      ));
+      setFilteredProducts(prev => prev.map(p => 
+        p.slug === slug 
+          ? { ...p, inStock: newInStock }
+          : p
+      ));
+    } catch (err: any) {
+      setError(err.message || 'Failed to update stock status');
+    } finally {
+      setTogglingStock(null);
     }
   };
 
@@ -368,10 +419,37 @@ export default function AdminProductsPage() {
                       Featured
                     </div>
                   )}
+                  {product.inStock === false && (
+                    <div className="px-2 py-1 bg-red-500 text-white text-xs font-medium rounded-full flex items-center gap-1">
+                      <PackageX className="h-3 w-3" />
+                      Sold Out
+                    </div>
+                  )}
                 </div>
 
                 {/* Quick Actions Overlay */}
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleToggleStock(product.slug);
+                    }}
+                    disabled={togglingStock === product.slug}
+                    className={`p-2 rounded-lg transition-colors ${
+                      product.inStock !== false
+                        ? 'bg-green-500 hover:bg-green-600'
+                        : 'bg-red-500 hover:bg-red-600'
+                    } disabled:opacity-50`}
+                    title={product.inStock !== false ? 'Mark as sold out' : 'Mark as in stock'}
+                  >
+                    {togglingStock === product.slug ? (
+                      <RefreshCw className="h-4 w-4 text-white animate-spin" />
+                    ) : product.inStock !== false ? (
+                      <PackageCheck className="h-4 w-4 text-white" />
+                    ) : (
+                      <PackageX className="h-4 w-4 text-white" />
+                    )}
+                  </button>
                   <button
                     onClick={(e) => {
                       e.preventDefault();
@@ -444,6 +522,7 @@ export default function AdminProductsPage() {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Price</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Preview Checkout</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Featured</th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Stock</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Actions</th>
                 </tr>
               </thead>
@@ -526,6 +605,30 @@ export default function AdminProductsPage() {
                       )}
                       {(product.isFeatured || product.is_featured) ? 'Featured' : 'Feature'}
                           </button>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleToggleStock(product.slug);
+                      }}
+                      disabled={togglingStock === product.slug}
+                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium transition-colors ${
+                        product.inStock !== false
+                          ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                          : 'bg-red-100 text-red-700 hover:bg-red-200'
+                      } disabled:opacity-50`}
+                      title={product.inStock !== false ? 'Mark as sold out' : 'Mark as in stock'}
+                    >
+                      {togglingStock === product.slug ? (
+                        <RefreshCw className="h-3 w-3 animate-spin" />
+                      ) : product.inStock !== false ? (
+                        <PackageCheck className="h-3 w-3" />
+                      ) : (
+                        <PackageX className="h-3 w-3" />
+                      )}
+                      {product.inStock !== false ? 'In Stock' : 'Sold Out'}
+                    </button>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1">

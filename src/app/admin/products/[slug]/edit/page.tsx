@@ -281,6 +281,7 @@ export default function EditProductPage() {
           rating: parseFloat(formData.rating) || 0,
           review_count: parseInt(formData.review_count) || 0,
           in_stock: formData.in_stock ?? true,
+          inStock: formData.in_stock ?? true, // Send both for compatibility
           is_featured: formData.is_featured ?? false,
           reviews: processedReviews,
           meta: meta, // Always send meta object (even if empty, it will be merged properly on server)

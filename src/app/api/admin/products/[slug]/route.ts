@@ -38,6 +38,13 @@ function revalidateProductPaths(slug: string) {
 
 // Helper to get auth from request
 async function getAdminAuth(request: NextRequest) {
+  // Bypass authentication in development if enabled
+  const { shouldBypassAuth } = await import('@/lib/supabase/auth');
+  if (shouldBypassAuth()) {
+    console.log('🔓 [AUTH] Bypassing authentication for API request');
+    return 'dev-bypass-token'; // Return a mock token for dev mode
+  }
+
   // Check for admin_token cookie first
   const token = request.cookies.get('admin_token')?.value;
   
@@ -160,16 +167,30 @@ export async function PATCH(
       }
     }
 
+    console.log('📝 Updating product with slug:', slug);
+    console.log('📝 Updates:', JSON.stringify(cleanedUpdates, null, 2));
+    
     const product = await updateProduct(slug, cleanedUpdates);
 
     if (!product) {
       // Log more details for debugging
-      console.error('Update product returned null for slug:', slug);
-      console.error('Updates attempted:', JSON.stringify(updates, null, 2));
+      console.error('❌ Update product returned null for slug:', slug);
+      console.error('❌ Updates attempted:', JSON.stringify(updates, null, 2));
+      console.error('❌ Cleaned updates:', JSON.stringify(cleanedUpdates, null, 2));
+      
+      // Check if product exists with this slug
+      const { getProductBySlug } = await import('@/lib/supabase/products');
+      const existingProduct = await getProductBySlug(slug, true);
+      if (existingProduct) {
+        console.error('✅ Product exists in database with slug:', existingProduct.slug);
+      } else {
+        console.error('❌ Product NOT found in database with slug:', slug);
+      }
+      
       return NextResponse.json(
         { 
-          error: 'Product update failed. This may be due to invalid data or database constraints. Check server logs for details.',
-          details: 'The product may not exist, or the update data may violate database constraints (e.g., empty strings for required fields).'
+          error: `Product update failed for slug: ${slug}. The product may not exist or there may be a database issue.`,
+          slug: slug
         },
         { status: 400 }
       );
