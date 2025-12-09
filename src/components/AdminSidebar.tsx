@@ -48,20 +48,50 @@ export default function AdminSidebar() {
     setMounted(true);
   }, []);
 
-  // Fetch orders count
+  // Fetch orders count (non-critical - fails silently)
   useEffect(() => {
+    let abortController: AbortController | null = null;
+
     const fetchOrdersCount = async () => {
       try {
         const token = localStorage.getItem('admin_token');
         if (!token) return;
 
-        const response = await fetch('/api/admin/orders');
-        if (response.ok) {
-          const orders = await response.json();
-          setOrdersCount(Array.isArray(orders) ? orders.length : 0);
+        // Create abort controller for timeout
+        abortController = new AbortController();
+        const timeoutId = setTimeout(() => abortController?.abort(), 10000); // 10 second timeout
+
+        try {
+          const response = await fetch('/api/admin/orders', {
+            signal: abortController.signal,
+            headers: {
+              ...(token && { 'Authorization': `Bearer ${token}` })
+            }
+          });
+
+          clearTimeout(timeoutId);
+
+          if (response.ok) {
+            const orders = await response.json();
+            setOrdersCount(Array.isArray(orders) ? orders.length : 0);
+          } else if (response.status === 401) {
+            // Not authenticated - silently fail
+            return;
+          }
+          // For other errors, silently fail (non-critical feature)
+        } catch (fetchError: any) {
+          clearTimeout(timeoutId);
+          
+          // Only log if it's not an abort (timeout) or network error
+          if (fetchError.name !== 'AbortError' && fetchError.name !== 'TypeError') {
+            // Silently fail - this is non-critical
+            return;
+          }
+          // Network errors are expected and can be ignored
         }
       } catch (error) {
-        console.error('Failed to fetch orders count:', error);
+        // Silently fail - orders count is non-critical
+        // The sidebar will work fine without the badge count
       }
     };
 
@@ -69,7 +99,10 @@ export default function AdminSidebar() {
       fetchOrdersCount();
       // Refresh count every 30 seconds
       const interval = setInterval(fetchOrdersCount, 30000);
-      return () => clearInterval(interval);
+      return () => {
+        clearInterval(interval);
+        abortController?.abort();
+      };
     }
   }, [mounted]);
 
