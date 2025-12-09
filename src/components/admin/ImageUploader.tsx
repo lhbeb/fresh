@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { Upload, X, Loader2, Image as ImageIcon, GripVertical } from 'lucide-react';
 import Image from 'next/image';
+import { uploadImagesSequentially, uploadImageWithRetry } from '@/utils/robustUpload';
 
 interface ImageUploaderProps {
   productSlug: string;
@@ -72,46 +73,27 @@ const ImageUploader = forwardRef<ImageUploaderRef, ImageUploaderProps>(
         }
 
         setUploading(true);
-        setUploadProgress('Uploading images...');
-        onUploadStatusChange?.({ uploading: true, message: 'Uploading images...' });
+        setUploadProgress('Preparing to upload images...');
+        onUploadStatusChange?.({ uploading: true, message: 'Preparing to upload images...' });
 
         try {
           const uploadedUrls: string[] = [];
           const folderName = productSlug;
+          const uploadTasks: Array<{ file: File; path: string; folder: string }> = [];
 
-          // Upload thumbnail first (always img1)
+          // Prepare thumbnail upload (always img1)
           if (pendingThumbnail) {
-            setUploadProgress('Uploading thumbnail: img1...');
-            onUploadStatusChange?.({ uploading: true, message: 'Uploading thumbnail (img1)...' });
-            
             const extension = pendingThumbnail.file.name.split('.').pop()?.toLowerCase() || 'jpg';
             const fileName = `img1.${extension}`;
             const filePath = `${folderName}/${fileName}`;
-
-            const formData = new FormData();
-            formData.append('file', pendingThumbnail.file);
-            formData.append('path', filePath);
-            formData.append('folder', folderName);
-
-            const response = await fetch('/api/admin/upload-image', {
-              method: 'POST',
-              body: formData,
+            uploadTasks.push({
+              file: pendingThumbnail.file,
+              path: filePath,
+              folder: folderName,
             });
-
-            if (!response.ok) {
-              const error = await response.json();
-              throw new Error(error.error || 'Failed to upload thumbnail');
-            }
-
-            const data = await response.json();
-            uploadedUrls.push(data.url);
-
-            // Clean up preview
-            URL.revokeObjectURL(pendingThumbnail.preview);
-            setPendingThumbnail(null);
           }
 
-          // Upload gallery images (img2, img3, etc.)
+          // Prepare gallery image uploads (img2, img3, etc.)
           if (pendingGallery.length > 0) {
             // Get next image number (start from img2 if thumbnail exists, otherwise img1)
             const getNextImageNumber = () => {
@@ -135,34 +117,69 @@ const ImageUploader = forwardRef<ImageUploaderRef, ImageUploaderProps>(
               const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
               const fileName = `img${imageNumber}.${extension}`;
               const filePath = `${folderName}/${fileName}`;
-
-              setUploadProgress(`Uploading gallery image ${i + 1}/${pendingGallery.length}: ${fileName}...`);
-              onUploadStatusChange?.({ uploading: true, message: `Uploading gallery image ${i + 1}/${pendingGallery.length}...` });
-
-              const formData = new FormData();
-              formData.append('file', file);
-              formData.append('path', filePath);
-              formData.append('folder', folderName);
-
-              const response = await fetch('/api/admin/upload-image', {
-                method: 'POST',
-                body: formData,
+              
+              uploadTasks.push({
+                file,
+                path: filePath,
+                folder: folderName,
               });
-
-              if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || 'Failed to upload gallery image');
-              }
-
-              const data = await response.json();
-              uploadedUrls.push(data.url);
             }
+          }
 
-            // Clean up preview URLs
-            pendingGallery.forEach((img) => {
-              URL.revokeObjectURL(img.preview);
-            });
-            setPendingGallery([]);
+          // Upload all images sequentially with retry mechanism
+          const batchResult = await uploadImagesSequentially({
+            uploads: uploadTasks,
+            onProgress: (current, total, fileName) => {
+              const progress = Math.round((current / total) * 100);
+              setUploadProgress(`Uploading ${current}/${total}: ${fileName || 'images'}... (${progress}%)`);
+              onUploadStatusChange?.({ 
+                uploading: true, 
+                message: `Uploading ${current}/${total}: ${fileName || 'images'}... (${progress}%)` 
+              });
+            },
+            onImageComplete: (index, result) => {
+              if (result.success && result.url) {
+                uploadedUrls.push(result.url);
+                const fileName = uploadTasks[index]?.file.name || 'image';
+                setUploadProgress(`✅ ${fileName} uploaded successfully (${index + 1}/${uploadTasks.length})`);
+              } else {
+                const fileName = uploadTasks[index]?.file.name || 'image';
+                console.warn(`Failed to upload ${fileName}:`, result.error);
+                setUploadProgress(`⚠️ ${fileName} failed: ${result.error} (retrying...)`);
+              }
+            },
+            maxRetries: 3,
+            retryDelay: 1000,
+            timeout: 120000, // 2 minutes per image
+          });
+
+          // Clean up preview URLs
+          if (pendingThumbnail) {
+            URL.revokeObjectURL(pendingThumbnail.preview);
+            setPendingThumbnail(null);
+          }
+          pendingGallery.forEach((img) => {
+            URL.revokeObjectURL(img.preview);
+          });
+          setPendingGallery([]);
+
+          // Check if all uploads succeeded
+          if (!batchResult.success) {
+            const errorMessages = batchResult.errors.join('; ');
+            const errorMsg = `Some images failed to upload. ${batchResult.successful} succeeded, ${batchResult.failed} failed. Errors: ${errorMessages}`;
+            
+            // If at least one image succeeded, we can continue but warn the user
+            if (batchResult.successful > 0) {
+              console.warn('Some images failed to upload:', batchResult.errors);
+              setUploadProgress(`⚠️ ${batchResult.successful} images uploaded, ${batchResult.failed} failed. Continuing...`);
+              onUploadStatusChange?.({ uploading: false, message: `Warning: ${batchResult.failed} image(s) failed to upload.` });
+            } else {
+              // All uploads failed
+              throw new Error(errorMsg);
+            }
+          } else {
+            setUploadProgress('✅ All images uploaded successfully!');
+            onUploadStatusChange?.({ uploading: false, message: 'All images uploaded successfully!' });
           }
 
           // Combine: thumbnail (first) + gallery images
@@ -179,27 +196,23 @@ const ImageUploader = forwardRef<ImageUploaderRef, ImageUploaderProps>(
           allImages.push(...galleryImages);
 
           // Add newly uploaded gallery images
+          // Note: uploadedUrls may be in order, but we need to match them correctly
+          // Since we upload sequentially, the order should be: thumbnail (if exists) then gallery
           const newGalleryUrls = pendingThumbnail ? uploadedUrls.slice(1) : uploadedUrls;
-          if (pendingThumbnail) {
-            // Thumbnail already accounted for in first entry
-            allImages.push(...newGalleryUrls);
-          } else {
-            allImages.push(...newGalleryUrls);
-          }
+          allImages.push(...newGalleryUrls);
 
           const uniqueAllImages = Array.from(new Set(allImages.filter(Boolean)));
 
           // Update parent
           onImagesUpdate(uniqueAllImages);
 
-          setUploadProgress('');
-          onUploadStatusChange?.({ uploading: false, message: 'Images uploaded successfully.' });
           return { uploadedUrls, allImages: uniqueAllImages };
         } catch (error: any) {
           console.error('Upload error:', error);
           setUploadProgress('');
-          onUploadStatusChange?.({ uploading: false, message: error?.message || 'Image upload failed.' });
-          throw error;
+          const errorMessage = error?.message || 'Image upload failed. Please try again.';
+          onUploadStatusChange?.({ uploading: false, message: errorMessage });
+          throw new Error(errorMessage);
         } finally {
           setUploading(false);
         }
@@ -215,8 +228,16 @@ const ImageUploader = forwardRef<ImageUploaderRef, ImageUploaderProps>(
 
     const handleThumbnailAdded = useCallback(
       (file: File) => {
+        // Validate file type
         if (!file.type.startsWith('image/')) {
-          alert('Please select an image file');
+          alert('Please select an image file (JPEG, PNG, WebP, or GIF)');
+          return;
+        }
+
+        // Validate file size (10MB max)
+        const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+        if (file.size > MAX_FILE_SIZE) {
+          alert(`File size (${(file.size / 1024 / 1024).toFixed(2)}MB) exceeds maximum allowed size of ${MAX_FILE_SIZE / 1024 / 1024}MB. Please compress the image or select a smaller file.`);
           return;
         }
 
@@ -240,16 +261,34 @@ const ImageUploader = forwardRef<ImageUploaderRef, ImageUploaderProps>(
       (files: File[]) => {
         if (!files || files.length === 0) return;
 
-        const imageFiles = Array.from(files).filter((file) =>
-          file.type.startsWith('image/')
-        );
+        const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+        const validFiles: File[] = [];
+        const invalidFiles: string[] = [];
 
-        if (imageFiles.length === 0) {
-          alert('Please select image files only');
+        Array.from(files).forEach((file) => {
+          if (!file.type.startsWith('image/')) {
+            invalidFiles.push(`${file.name}: Not an image file`);
+            return;
+          }
+          if (file.size > MAX_FILE_SIZE) {
+            invalidFiles.push(`${file.name}: File too large (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+            return;
+          }
+          validFiles.push(file);
+        });
+
+        if (invalidFiles.length > 0) {
+          alert(`Some files were rejected:\n${invalidFiles.join('\n')}\n\nMaximum file size: ${MAX_FILE_SIZE / 1024 / 1024}MB`);
+        }
+
+        if (validFiles.length === 0) {
+          if (invalidFiles.length === 0) {
+            alert('Please select image files only');
+          }
           return;
         }
 
-        const newPending: PendingImage[] = imageFiles.map((file) => ({
+        const newPending: PendingImage[] = validFiles.map((file) => ({
           file,
           preview: URL.createObjectURL(file),
           id: `gallery-${Date.now()}-${Math.random()}`,

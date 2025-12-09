@@ -63,3 +63,4 @@ BEGIN
     RAISE NOTICE 'Column is_converted already exists';
   END IF;
 END $$;
+
