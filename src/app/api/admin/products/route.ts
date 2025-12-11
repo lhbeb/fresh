@@ -122,6 +122,7 @@ export async function POST(request: NextRequest) {
       'category',
       'brand',
       'checkout_link',
+      'listed_by',
     ];
 
     for (const field of requiredFields) {
@@ -131,6 +132,15 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
+    }
+
+    // Validate listed_by value
+    const validListedByValues = ['walid', 'abdo', 'jebbar', 'amine', 'othmane', 'janah', 'youssef'];
+    if (productData.listed_by && !validListedByValues.includes(productData.listed_by)) {
+      return NextResponse.json(
+        { error: `Invalid listed_by value. Must be one of: ${validListedByValues.join(', ')}` },
+        { status: 400 }
+      );
     }
 
     try {

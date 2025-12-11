@@ -46,4 +46,5 @@ export interface Product {
   published?: boolean; // Extracted from meta.published for easier access
   isFeatured?: boolean;
   inStock?: boolean;
+  listedBy?: string | null; // The user who listed this product
 }

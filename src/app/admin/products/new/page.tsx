@@ -130,6 +130,7 @@ export default function NewProductPage() {
     review_count: '0',
     is_featured: false,
     published: false,
+    listed_by: '',
     metaTitle: '',
     metaDescription: '',
     metaKeywords: '',
@@ -251,6 +252,13 @@ export default function NewProductPage() {
         };
       });
 
+      // Validate listed_by is selected
+      if (!formData.listed_by || formData.listed_by.trim() === '') {
+        setError('Listed by is required. Please select a user.');
+        setLoading(false);
+        return;
+      }
+
       const productData = {
         slug: sanitizedSlug,
         id: sanitizedSlug,
@@ -272,6 +280,7 @@ export default function NewProductPage() {
         inStock: true,
         is_featured: formData.is_featured,
         isFeatured: formData.is_featured,
+        listed_by: formData.listed_by,
         reviews: processedReviews.length > 0 ? processedReviews : [],
         meta: Object.keys(meta).length > 0 ? meta : {},
       };
@@ -504,6 +513,24 @@ export default function NewProductPage() {
                 </select>
               </Field>
               </div>
+
+            <Field label="Listed by" required>
+              <select
+                value={formData.listed_by}
+                onChange={(e) => updateField('listed_by', e.target.value)}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white"
+                required
+              >
+                <option value="">Select a user</option>
+                <option value="walid">walid</option>
+                <option value="abdo">abdo</option>
+                <option value="jebbar">jebbar</option>
+                <option value="amine">amine</option>
+                <option value="othmane">othmane</option>
+                <option value="janah">janah</option>
+                <option value="youssef">youssef</option>
+              </select>
+            </Field>
 
             {/* Toggle Switches */}
             <div className="flex flex-wrap gap-6 pt-4 border-t border-gray-100">

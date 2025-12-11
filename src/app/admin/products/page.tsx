@@ -26,6 +26,7 @@ interface Product {
   isFeatured?: boolean;
   is_featured?: boolean;
   published?: boolean;
+  listedBy?: string | null;
 }
 
 type ViewMode = 'grid' | 'list';
@@ -39,6 +40,7 @@ export default function AdminProductsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'draft'>('all');
   const [featuredFilter, setFeaturedFilter] = useState<'all' | 'featured' | 'not_featured'>('all');
+  const [listedByFilter, setListedByFilter] = useState<string>('all');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [currentPage, setCurrentPage] = useState(1);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -104,9 +106,20 @@ export default function AdminProductsPage() {
       filtered = filtered.filter(p => !(p.isFeatured || p.is_featured));
     }
 
+    // Apply listed_by filter
+    if (listedByFilter !== 'all') {
+      if (listedByFilter === 'none') {
+        // Filter for products without listed_by
+        filtered = filtered.filter(p => !p.listedBy || p.listedBy === null || p.listedBy === '');
+      } else {
+        // Filter for specific listed_by value
+        filtered = filtered.filter(p => p.listedBy === listedByFilter);
+      }
+    }
+
     setFilteredProducts(filtered);
     setCurrentPage(1);
-  }, [searchQuery, statusFilter, featuredFilter, products]);
+  }, [searchQuery, statusFilter, featuredFilter, listedByFilter, products]);
 
   const handleDelete = async (slug: string) => {
     if (!confirm('Are you sure you want to delete this product?')) return;
@@ -323,6 +336,26 @@ export default function AdminProductsPage() {
                 </select>
               </div>
 
+          {/* Listed By Filter */}
+          <div className="flex items-center gap-2">
+            <Filter className="h-5 w-5 text-gray-400" />
+                <select
+              value={listedByFilter}
+              onChange={(e) => setListedByFilter(e.target.value)}
+              className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-medium"
+            >
+              <option value="all">All Uploaders</option>
+              <option value="walid">walid</option>
+              <option value="abdo">abdo</option>
+              <option value="jebbar">jebbar</option>
+              <option value="amine">amine</option>
+              <option value="othmane">othmane</option>
+              <option value="janah">janah</option>
+              <option value="youssef">youssef</option>
+              <option value="none">Not Assigned</option>
+                </select>
+              </div>
+
           {/* View Toggle & Actions */}
           <div className="flex items-center gap-3">
             <div className="flex items-center bg-gray-100 rounded-lg p-1">
@@ -359,13 +392,15 @@ export default function AdminProductsPage() {
               </div>
 
       {/* Filter Status */}
-      {(searchQuery || statusFilter !== 'all' || featuredFilter !== 'all') && (
+      {(searchQuery || statusFilter !== 'all' || featuredFilter !== 'all' || listedByFilter !== 'all') && (
         <div className="mb-4 px-4 py-2 bg-blue-50 border border-blue-200 rounded-xl">
           <div className="text-sm text-blue-700">
             Showing <strong>{filteredProducts.length}</strong> of <strong>{products.length}</strong> product{products.length !== 1 ? 's' : ''}
             {statusFilter === 'published' && ` (${products.filter(p => p.published).length} published)`}
             {statusFilter === 'draft' && ` (${products.filter(p => !p.published).length} drafts)`}
             {featuredFilter === 'featured' && ` (${featuredCount} featured)`}
+            {listedByFilter !== 'all' && listedByFilter !== 'none' && ` (listed by: ${listedByFilter})`}
+            {listedByFilter === 'none' && ` (not assigned)`}
           </div>
         </div>
       )}
@@ -520,6 +555,7 @@ export default function AdminProductsPage() {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Product</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Price</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Listed By</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Preview Checkout</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Featured</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Stock</th>
@@ -568,6 +604,9 @@ export default function AdminProductsPage() {
                   <td className="px-4 py-3">
                     <span className="font-semibold text-gray-900">${product.price.toFixed(2)}</span>
                       </td>
+                  <td className="px-4 py-3">
+                    <span className="text-sm text-gray-700">{product.listedBy || '—'}</span>
+                  </td>
                   <td className="px-4 py-3">
                     {product.checkoutLink ? (
                         <a

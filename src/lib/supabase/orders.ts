@@ -211,20 +211,55 @@ export async function getOrderById(orderId: string) {
 
 /**
  * Get all orders (for admin dashboard)
+ * Includes product's listed_by field by joining with products table
  */
 export async function getAllOrders() {
   try {
-    const { data, error } = await supabaseAdmin
+    const { data: orders, error: ordersError } = await supabaseAdmin
       .from('orders')
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching orders:', error);
+    if (ordersError) {
+      console.error('Error fetching orders:', ordersError);
       return [];
     }
 
-    return data || [];
+    if (!orders || orders.length === 0) {
+      return [];
+    }
+
+    // Get unique product slugs from orders
+    const productSlugs = [...new Set(orders.map((o: any) => o.product_slug).filter(Boolean))];
+    
+    // Fetch products to get listed_by values
+    const { data: products, error: productsError } = await supabaseAdmin
+      .from('products')
+      .select('slug, listed_by')
+      .in('slug', productSlugs);
+
+    if (productsError) {
+      console.error('Error fetching products for orders:', productsError);
+      // Return orders without listed_by if product fetch fails
+      return orders || [];
+    }
+
+    // Create a map of slug -> listed_by
+    const productListedByMap = new Map<string, string | null>();
+    (products || []).forEach((p: any) => {
+      productListedByMap.set(p.slug, p.listed_by || null);
+    });
+
+    // Enrich orders with product's listed_by
+    const enrichedOrders = (orders || []).map((order: any) => {
+      const listedBy = productListedByMap.get(order.product_slug) || null;
+      return {
+        ...order,
+        product_listed_by: listedBy, // Add the listed_by value from the product
+      };
+    });
+
+    return enrichedOrders;
   } catch (error) {
     console.error('Error fetching orders:', error);
     return [];

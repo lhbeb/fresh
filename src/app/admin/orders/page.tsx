@@ -27,6 +27,7 @@ interface Order {
   created_at: string;
   updated_at: string;
   order_data: any;
+  product_listed_by?: string | null; // The user who listed the product
 }
 
 export default function AdminOrdersPage() {
@@ -562,6 +563,10 @@ export default function AdminOrdersPage() {
                           <Eye className="h-4 w-4 text-gray-500" />
                         </Link>
                       </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-gray-400">Uploader:</span>
+                        <span className="text-xs font-medium text-gray-600">{order.product_listed_by || '—'}</span>
+                      </div>
                     </div>
 
                     {/* Price & Date */}
@@ -684,6 +689,12 @@ export default function AdminOrdersPage() {
                           <div className="flex items-center gap-2">
                             <DollarSign className="h-4 w-4 text-gray-400" />
                             <span className="text-sm font-medium text-gray-900">${order.product_price.toFixed(2)}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4 text-gray-400" />
+                            <span className="text-sm text-gray-700">
+                              <span className="font-medium">Uploader:</span> {order.product_listed_by || '—'}
+                            </span>
                           </div>
                           <div className="flex items-center gap-2">
                             <Calendar className="h-4 w-4 text-gray-400" />

@@ -126,7 +126,7 @@ export default function EditProductPage() {
     slug: '', title: '', description: '', price: '', original_price: '',
     brand: '', category: '', condition: '', payee_email: '', checkout_link: '',
     currency: 'USD', images: '', rating: '0', review_count: '0',
-    in_stock: true, is_featured: false, published: false,
+    in_stock: true, is_featured: false, published: false, listed_by: '',
     metaTitle: '', metaDescription: '', metaKeywords: '',
     metaOgTitle: '', metaOgDescription: '', metaOgImage: '',
     metaTwitterTitle: '', metaTwitterDescription: '', metaTwitterImage: '',
@@ -172,6 +172,7 @@ export default function EditProductPage() {
         in_stock: data.inStock ?? data.in_stock ?? true,
         is_featured: data.isFeatured ?? data.is_featured ?? false,
         published: data.meta?.published ?? false,
+        listed_by: data.listedBy || data.listed_by || '',
         metaTitle: data.meta?.title || '',
         metaDescription: data.meta?.description || '',
         metaKeywords: data.meta?.keywords || '',
@@ -234,6 +235,13 @@ export default function EditProductPage() {
 
       if (!finalImages.length) throw new Error('At least one image is required');
 
+      // Validate listed_by is selected (required for saving)
+      if (!formData.listed_by || formData.listed_by.trim() === '') {
+        setError('Listed by is required. Please select a user before saving.');
+        setSaving(false);
+        return;
+      }
+
       // Build meta object, preserving existing meta data
       const existingMeta = product?.meta || {};
       const meta: any = {
@@ -283,6 +291,7 @@ export default function EditProductPage() {
           in_stock: formData.in_stock ?? true,
           inStock: formData.in_stock ?? true, // Send both for compatibility
           is_featured: formData.is_featured ?? false,
+          listed_by: formData.listed_by,
           reviews: processedReviews,
           meta: meta, // Always send meta object (even if empty, it will be merged properly on server)
         }),
@@ -302,6 +311,7 @@ export default function EditProductPage() {
         setFormData(prev => ({
           ...prev,
           published: updatedProduct.meta?.published ?? updatedProduct.published ?? prev.published,
+          listed_by: updatedProduct.listedBy || updatedProduct.listed_by || prev.listed_by,
         }));
       }
 
@@ -528,6 +538,24 @@ export default function EditProductPage() {
                 </select>
               </Field>
               </div>
+
+            <Field label="Listed by" required>
+              <select
+                value={formData.listed_by}
+                onChange={(e) => updateField('listed_by', e.target.value)}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white"
+                required
+              >
+                <option value="">Select a user</option>
+                <option value="walid">walid</option>
+                <option value="abdo">abdo</option>
+                <option value="jebbar">jebbar</option>
+                <option value="amine">amine</option>
+                <option value="othmane">othmane</option>
+                <option value="janah">janah</option>
+                <option value="youssef">youssef</option>
+              </select>
+            </Field>
 
             {/* Toggle Switches */}
             <div className="flex flex-wrap gap-6 pt-4 border-t border-gray-100">

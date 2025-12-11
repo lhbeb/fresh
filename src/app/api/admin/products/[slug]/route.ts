@@ -123,6 +123,24 @@ export async function PATCH(
 
     const updates = await request.json();
 
+    // Validate listed_by if it's being updated (required field)
+    if (updates.listed_by !== undefined) {
+      if (!updates.listed_by || updates.listed_by.trim() === '') {
+        return NextResponse.json(
+          { error: 'listed_by is required. Please select a user.' },
+          { status: 400 }
+        );
+      }
+      // Validate listed_by value
+      const validListedByValues = ['walid', 'abdo', 'jebbar', 'amine', 'othmane', 'janah', 'youssef'];
+      if (!validListedByValues.includes(updates.listed_by)) {
+        return NextResponse.json(
+          { error: `Invalid listed_by value. Must be one of: ${validListedByValues.join(', ')}` },
+          { status: 400 }
+        );
+      }
+    }
+
     // Helper function to check if a value is meaningful (not empty string, null, or undefined)
     const hasValue = (value: any): boolean => {
       if (value === undefined || value === null) return false;

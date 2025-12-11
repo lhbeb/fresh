@@ -29,6 +29,7 @@ function transformProduct(row: any): Product {
     published: published, // Default to true unless explicitly set to false
     isFeatured: Boolean(row.is_featured),
     inStock: row.in_stock !== undefined ? Boolean(row.in_stock) : true,
+    listedBy: row.listed_by || null,
   };
 }
 
@@ -219,6 +220,7 @@ export async function createProduct(productData: {
   inStock?: boolean;
   is_featured?: boolean;
   isFeatured?: boolean;
+  listed_by?: string;
 }): Promise<Product | null> {
   try {
     // Use id if provided, otherwise use slug
@@ -251,6 +253,7 @@ export async function createProduct(productData: {
         meta: productData.meta || {},
         in_stock: inStock,
         is_featured: productData.is_featured !== undefined ? productData.is_featured : (productData.isFeatured ?? false),
+        listed_by: productData.listed_by || null,
       })
       .select()
       .single();
@@ -293,6 +296,7 @@ export async function updateProduct(
     inStock?: boolean;
     is_featured?: boolean;
     isFeatured?: boolean;
+    listed_by?: string;
   }
 ): Promise<Product | null> {
   try {
@@ -355,6 +359,9 @@ export async function updateProduct(
     // Handle both is_featured and isFeatured (booleans can be false, so check for undefined)
     if (updates.is_featured !== undefined) updateData.is_featured = updates.is_featured;
     if (updates.isFeatured !== undefined) updateData.is_featured = updates.isFeatured;
+    
+    // Handle listed_by
+    if (updates.listed_by !== undefined && hasValue(updates.listed_by)) updateData.listed_by = updates.listed_by;
 
     // If no fields to update (only updated_at), return existing product
     // Use includeDrafts: true since this is an admin update operation
