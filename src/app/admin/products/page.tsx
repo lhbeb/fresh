@@ -7,7 +7,8 @@ import Image from 'next/image';
 import { 
   Package, Search, Plus, Edit, Trash2, ExternalLink, 
   Filter, Grid3X3, List, MoreVertical, Eye, X,
-  ChevronLeft, ChevronRight, RefreshCw, AlertCircle, Star, PackageX, PackageCheck
+  ChevronLeft, ChevronRight, RefreshCw, AlertCircle, Star, PackageX, PackageCheck,
+  Download, CheckSquare, Square
 } from 'lucide-react';
 import AdminLayout from '@/components/AdminLayout';
 import AdminLoading from '@/components/AdminLoading';
@@ -47,6 +48,9 @@ export default function AdminProductsPage() {
   const [togglingFeatured, setTogglingFeatured] = useState<string | null>(null);
   const [togglingStock, setTogglingStock] = useState<string | null>(null);
   const [featuredCount, setFeaturedCount] = useState(0);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
+  const [exporting, setExporting] = useState(false);
   const FEATURE_LIMIT = 6;
   const itemsPerPage = 12;
 
@@ -78,6 +82,21 @@ export default function AdminProductsPage() {
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.dropdown-menu') && !target.closest('.dropdown-trigger')) {
+        setOpenDropdown(null);
+      }
+    };
+
+    if (openDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [openDropdown]);
 
   useEffect(() => {
     let filtered = [...products];
@@ -134,6 +153,14 @@ export default function AdminProductsPage() {
         }
       });
       if (!response.ok) throw new Error('Failed to delete product');
+      
+      // Remove from selection if selected
+      setSelectedProducts(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(slug);
+        return newSet;
+      });
+      
       await fetchProducts();
     } catch (err) {
       setError('Failed to delete product');
@@ -240,6 +267,97 @@ export default function AdminProductsPage() {
       setError(err.message || 'Failed to update stock status');
     } finally {
       setTogglingStock(null);
+    }
+  };
+
+  const handleToggleSelect = (slug: string) => {
+    setSelectedProducts(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(slug)) {
+        newSet.delete(slug);
+      } else {
+        newSet.add(slug);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedProducts.size === paginatedProducts.length) {
+      // Deselect all
+      setSelectedProducts(new Set());
+    } else {
+      // Select all on current page
+      setSelectedProducts(new Set(paginatedProducts.map(p => p.slug)));
+    }
+  };
+
+  const handleSelectAllFiltered = () => {
+    if (selectedProducts.size === filteredProducts.length && filteredProducts.length > 0) {
+      // Deselect all
+      setSelectedProducts(new Set());
+    } else {
+      // Select all filtered products
+      setSelectedProducts(new Set(filteredProducts.map(p => p.slug)));
+    }
+  };
+
+  const handleExport = async () => {
+    if (selectedProducts.size === 0) {
+      setError('Please select at least one product to export');
+      return;
+    }
+
+    setExporting(true);
+    setError('');
+
+    try {
+      const token = localStorage.getItem('admin_token');
+      const response = await fetch('/api/admin/products/bulk-export', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        },
+        body: JSON.stringify({
+          slugs: Array.from(selectedProducts)
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to export products');
+      }
+
+      // Get the ZIP file as blob
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      
+      // Get filename from Content-Disposition header or use default
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = 'products-export.zip';
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?(.+?)"?$/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+      
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      // Clear selection after successful export
+      setSelectedProducts(new Set());
+    } catch (err: any) {
+      setError(err.message || 'Failed to export products');
+      console.error('Export error:', err);
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -380,6 +498,23 @@ export default function AdminProductsPage() {
               <RefreshCw className="h-4 w-4 text-gray-600" />
             </button>
 
+            {selectedProducts.size > 0 && (
+              <button
+                onClick={handleExport}
+                disabled={exporting}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors shadow-lg shadow-green-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {exporting ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
+                <span className="font-medium">
+                  {exporting ? 'Exporting...' : `Export (${selectedProducts.size})`}
+                </span>
+              </button>
+            )}
+
             <Link
               href="/admin/products/new"
               className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/25"
@@ -390,6 +525,35 @@ export default function AdminProductsPage() {
                   </div>
                 </div>
               </div>
+
+      {/* Selection Controls */}
+      {selectedProducts.size > 0 && (
+        <div className="mb-4 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium text-blue-900">
+              {selectedProducts.size} product{selectedProducts.size !== 1 ? 's' : ''} selected
+            </span>
+            <button
+              onClick={handleSelectAll}
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+            >
+              {selectedProducts.size === paginatedProducts.length ? 'Deselect Page' : 'Select Page'}
+            </button>
+            <button
+              onClick={handleSelectAllFiltered}
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+            >
+              {selectedProducts.size === filteredProducts.length && filteredProducts.length > 0 ? 'Deselect All Filtered' : 'Select All Filtered'}
+            </button>
+            <button
+              onClick={() => setSelectedProducts(new Set())}
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+            >
+              Clear Selection
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Filter Status */}
       {(searchQuery || statusFilter !== 'all' || featuredFilter !== 'all' || listedByFilter !== 'all') && (
@@ -424,8 +588,30 @@ export default function AdminProductsPage() {
           {paginatedProducts.map((product) => (
             <div
               key={product.id}
-              className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden group hover:shadow-md hover:border-gray-200 transition-all"
+              className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden group hover:shadow-md hover:border-gray-200 transition-all relative"
             >
+              {/* Selection Checkbox */}
+              <div className="absolute top-3 left-3 z-10">
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleToggleSelect(product.slug);
+                  }}
+                  className={`p-1.5 rounded-lg bg-white/90 backdrop-blur-sm border-2 transition-all ${
+                    selectedProducts.has(product.slug)
+                      ? 'border-blue-600 bg-blue-50'
+                      : 'border-gray-300 hover:border-gray-400'
+                  }`}
+                >
+                  {selectedProducts.has(product.slug) ? (
+                    <CheckSquare className="h-4 w-4 text-blue-600" />
+                  ) : (
+                    <Square className="h-4 w-4 text-gray-400" />
+                  )}
+                </button>
+              </div>
+
               {/* Image */}
               <div className="relative aspect-square bg-gray-100">
                 {product.images?.[0] ? (
@@ -548,23 +734,55 @@ export default function AdminProductsPage() {
           ))}
         </div>
       ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <table className="w-full">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
+          <table className="w-full min-w-[800px]">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase w-12">
+                  <button
+                    onClick={handleSelectAll}
+                    className="p-1 rounded hover:bg-gray-200 transition-colors"
+                    title={selectedProducts.size === paginatedProducts.length ? 'Deselect all' : 'Select all'}
+                  >
+                    {selectedProducts.size === paginatedProducts.length && paginatedProducts.length > 0 ? (
+                      <CheckSquare className="h-4 w-4 text-blue-600" />
+                    ) : (
+                      <Square className="h-4 w-4 text-gray-400" />
+                    )}
+                  </button>
+                </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Product</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase hidden md:table-cell">Status</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Price</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Listed By</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Preview Checkout</th>
-                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Featured</th>
-                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Stock</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase hidden lg:table-cell">Listed By</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase hidden xl:table-cell">Preview Checkout</th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase hidden lg:table-cell">Featured</th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase hidden lg:table-cell">Stock</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Actions</th>
                 </tr>
               </thead>
             <tbody className="divide-y divide-gray-100">
               {paginatedProducts.map((product) => (
                 <tr key={product.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleToggleSelect(product.slug);
+                      }}
+                      className={`p-1.5 rounded-lg border-2 transition-all ${
+                        selectedProducts.has(product.slug)
+                          ? 'border-blue-600 bg-blue-50'
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      {selectedProducts.has(product.slug) ? (
+                        <CheckSquare className="h-4 w-4 text-blue-600" />
+                      ) : (
+                        <Square className="h-4 w-4 text-gray-400" />
+                      )}
+                    </button>
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-start gap-3">
                       <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
@@ -585,10 +803,30 @@ export default function AdminProductsPage() {
                       <div className="min-w-0 flex-1">
                         <p className="font-medium text-gray-900 break-words leading-tight">{product.title}</p>
                         <p className="text-xs text-gray-400 truncate mt-1">{product.slug}</p>
+                        {/* Show status badges on small screens */}
+                        <div className="flex flex-wrap items-center gap-1.5 mt-2 md:hidden">
+                          {!product.published && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-medium rounded">
+                              Draft
+                            </span>
+                          )}
+                          {(product.isFeatured || product.is_featured) && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-medium rounded">
+                              <Star className="h-2.5 w-2.5 fill-blue-700" />
+                              Featured
+                            </span>
+                          )}
+                          {product.inStock === false && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-red-100 text-red-700 text-[10px] font-medium rounded">
+                              <PackageX className="h-2.5 w-2.5" />
+                              Sold Out
+                            </span>
+                          )}
+                        </div>
                           </div>
                         </div>
                       </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 hidden md:table-cell">
                     {product.published ? (
                       <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
                         <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
@@ -604,10 +842,10 @@ export default function AdminProductsPage() {
                   <td className="px-4 py-3">
                     <span className="font-semibold text-gray-900">${product.price.toFixed(2)}</span>
                       </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 hidden lg:table-cell">
                     <span className="text-sm text-gray-700">{product.listedBy || '—'}</span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 hidden xl:table-cell">
                     {product.checkoutLink ? (
                         <a
                           href={product.checkoutLink}
@@ -623,7 +861,7 @@ export default function AdminProductsPage() {
                       <span className="text-sm text-gray-400">-</span>
                     )}
                       </td>
-                  <td className="px-4 py-3 text-center">
+                  <td className="px-4 py-3 text-center hidden lg:table-cell">
                           <button
                       onClick={(e) => {
                         e.preventDefault();
@@ -645,7 +883,7 @@ export default function AdminProductsPage() {
                       {(product.isFeatured || product.is_featured) ? 'Featured' : 'Feature'}
                           </button>
                   </td>
-                  <td className="px-4 py-3 text-center">
+                  <td className="px-4 py-3 text-center hidden lg:table-cell">
                     <button
                       onClick={(e) => {
                         e.preventDefault();
@@ -670,7 +908,9 @@ export default function AdminProductsPage() {
                     </button>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-1">
+                    <div className="flex items-center justify-end gap-1 relative">
+                      {/* Desktop: Show all action buttons */}
+                      <div className="hidden xl:flex items-center gap-1">
                           <button
                         onClick={(e) => {
                           e.preventDefault();
@@ -718,6 +958,102 @@ export default function AdminProductsPage() {
                         )}
                           </button>
                         </div>
+
+                      {/* Mobile/Tablet: Show three-dot menu */}
+                      <div className="xl:hidden relative">
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setOpenDropdown(openDropdown === product.slug ? null : product.slug);
+                          }}
+                          className="dropdown-trigger p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                          title="More actions"
+                        >
+                          <MoreVertical className="h-4 w-4 text-gray-500" />
+                        </button>
+
+                        {/* Dropdown Menu */}
+                        {openDropdown === product.slug && (
+                          <div className="dropdown-menu absolute right-0 mt-1 w-56 bg-white rounded-xl shadow-lg border border-gray-200 z-50 py-1">
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                router.push(`/products/${product.slug}`);
+                                setOpenDropdown(null);
+                              }}
+                              className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors"
+                            >
+                              <Eye className="h-4 w-4 text-gray-400" />
+                              <span>View Product</span>
+                            </button>
+                            
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                handleToggleFeatured(product.slug);
+                                setOpenDropdown(null);
+                              }}
+                              disabled={togglingFeatured === product.slug || (!(product.isFeatured || product.is_featured) && featuredCount >= FEATURE_LIMIT)}
+                              className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {togglingFeatured === product.slug ? (
+                                <RefreshCw className="h-4 w-4 text-amber-600 animate-spin" />
+                              ) : (
+                                <Star className={`h-4 w-4 ${(product.isFeatured || product.is_featured) ? 'text-amber-500 fill-amber-500' : 'text-gray-400'}`} />
+                              )}
+                              <span>{(product.isFeatured || product.is_featured) ? 'Unfeature Product' : 'Feature Product'}</span>
+                            </button>
+
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                handleToggleStock(product.slug);
+                                setOpenDropdown(null);
+                              }}
+                              disabled={togglingStock === product.slug}
+                              className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {togglingStock === product.slug ? (
+                                <RefreshCw className="h-4 w-4 text-green-600 animate-spin" />
+                              ) : product.inStock !== false ? (
+                                <PackageCheck className="h-4 w-4 text-green-600" />
+                              ) : (
+                                <PackageX className="h-4 w-4 text-red-600" />
+                              )}
+                              <span>{product.inStock !== false ? 'Mark as Sold Out' : 'Mark as In Stock'}</span>
+                            </button>
+
+                            <Link
+                              href={`/admin/products/${product.slug}/edit`}
+                              onClick={() => setOpenDropdown(null)}
+                              className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors block"
+                            >
+                              <Edit className="h-4 w-4 text-gray-400" />
+                              <span>Edit Product</span>
+                            </Link>
+
+                            <div className="border-t border-gray-100 my-1"></div>
+
+                            <button
+                              onClick={() => {
+                                handleDelete(product.slug);
+                                setOpenDropdown(null);
+                              }}
+                              disabled={deletingId === product.slug}
+                              className="w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {deletingId === product.slug ? (
+                                <RefreshCw className="h-4 w-4 text-red-600 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4 text-red-600" />
+                              )}
+                              <span>Delete Product</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                       </td>
                     </tr>
               ))}

@@ -47,6 +47,7 @@ export default function AdminOrdersPage() {
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [showExportDialog, setShowExportDialog] = useState(false);
   const itemsPerPage = 20;
 
   useEffect(() => {
@@ -290,6 +291,43 @@ export default function AdminOrdersPage() {
     }
   };
 
+  const handleExport = (conversionType: 'all' | 'converted' | 'not_converted') => {
+    setShowExportDialog(false);
+    
+    let url = '/api/admin/orders/export';
+    if (conversionType === 'converted') {
+      url += '?conversion=converted';
+    } else if (conversionType === 'not_converted') {
+      url += '?conversion=not_converted';
+    }
+
+    fetch(url)
+      .then(res => res.blob())
+      .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        
+        // Set filename based on conversion type
+        let filename = 'orders.csv';
+        if (conversionType === 'converted') {
+          filename = 'orders-converted.csv';
+        } else if (conversionType === 'not_converted') {
+          filename = 'orders-not-converted.csv';
+        }
+        
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      })
+      .catch(err => {
+        setError('Failed to export orders');
+        console.error(err);
+      });
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleString('en-US', {
@@ -352,26 +390,79 @@ export default function AdminOrdersPage() {
         {/* Export Orders Button */}
         <div className="mb-4 flex justify-end">
           <button
-            onClick={() => {
-              fetch('/api/admin/orders/export')
-                .then(res => res.blob())
-                .then(blob => {
-                  const url = window.URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = 'orders.csv';
-                  document.body.appendChild(a);
-                  a.click();
-                  a.remove();
-                  window.URL.revokeObjectURL(url);
-                });
-            }}
+            onClick={() => setShowExportDialog(true)}
             className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" /></svg>
             Export Orders (CSV)
           </button>
         </div>
+
+        {/* Export Dialog */}
+        {showExportDialog && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Export Orders</h3>
+              <p className="text-sm text-gray-600 mb-6">
+                Choose which orders you want to export:
+              </p>
+              
+              <div className="space-y-3 mb-6">
+                <button
+                  onClick={() => handleExport('converted')}
+                  className="w-full text-left p-4 border-2 border-green-200 bg-green-50 rounded-xl hover:bg-green-100 hover:border-green-300 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold text-gray-900">Converted Orders</div>
+                      <div className="text-sm text-gray-600 mt-1">
+                        Export only orders marked as converted ({convertedOrders} orders)
+                      </div>
+                    </div>
+                    <CheckCircle2 className="h-6 w-6 text-green-600 flex-shrink-0" />
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => handleExport('not_converted')}
+                  className="w-full text-left p-4 border-2 border-gray-200 bg-white rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold text-gray-900">Non-Converted Orders</div>
+                      <div className="text-sm text-gray-600 mt-1">
+                        Export orders that are not yet converted ({orders.length - convertedOrders} orders)
+                      </div>
+                    </div>
+                    <Package className="h-6 w-6 text-gray-600 flex-shrink-0" />
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => handleExport('all')}
+                  className="w-full text-left p-4 border-2 border-blue-200 bg-blue-50 rounded-xl hover:bg-blue-100 hover:border-blue-300 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold text-gray-900">All Orders</div>
+                      <div className="text-sm text-gray-600 mt-1">
+                        Export all orders regardless of conversion status ({orders.length} orders)
+                      </div>
+                    </div>
+                    <Package className="h-6 w-6 text-blue-600 flex-shrink-0" />
+                  </div>
+                </button>
+              </div>
+
+              <button
+                onClick={() => setShowExportDialog(false)}
+                className="w-full px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Stats Summary */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
