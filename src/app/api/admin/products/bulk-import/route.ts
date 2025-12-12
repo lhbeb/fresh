@@ -236,34 +236,82 @@ async function processProductFromZip(
   // Upload images to Supabase
   const uploadedImageUrls: string[] = [];
 
+  // Check if this is an exported format with images/ folder (for root-level product.json)
+  const isExportedFormat = normalizedDir === '' && zipEntries.some(
+    (entry) => entry.entryName.replace(/\\/g, '/').startsWith('images/') && !entry.isDirectory
+  );
+
   for (let i = 0; i < imageEntries.length; i++) {
     const imageName = imageEntries[i];
     if (!imageName) continue;
 
-    // If it's a remote URL, use it directly
-    if (isRemoteUrl(imageName)) {
+    let imageEntry: AdmZip.IZipEntry | null = null;
+
+    // Handle exported format: images/01.jpg, images/02.jpg, etc.
+    // Prioritize local images from ZIP over URLs
+    if (isExportedFormat) {
+      // Try to find numbered image files in images/ folder
+      const imageNumber = String(i + 1).padStart(2, '0');
+      // Try common extensions
+      const extensions = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+      for (const ext of extensions) {
+        const numberedPath = `images/${imageNumber}.${ext}`;
+        imageEntry = zipEntries.find(
+          (entry) => entry.entryName.replace(/\\/g, '/') === numberedPath && !entry.isDirectory
+        ) || null;
+        if (imageEntry) break;
+      }
+    }
+
+    // If no local image found and it's a remote URL, use it directly
+    if (!imageEntry && isRemoteUrl(imageName)) {
       uploadedImageUrls.push(imageName);
       continue;
     }
 
-    // Find the image file in ZIP
-    // Handle both "product-slug/image.jpg" and "product-slug/subfolder/image.jpg"
-    // normalizedDir was already defined at the start of function
-    const imageEntry = zipEntries.find(
-      (entry) => {
-        const entryPath = entry.entryName.replace(/\\/g, '/');
-        // Check if entry is in the product directory and matches the image name
-        const isInDir = entryPath.startsWith(normalizedDir + '/');
-        const matchesName = entryPath === `${normalizedDir}/${imageName}` || 
-                           entryPath.endsWith(`/${imageName}`);
-        return isInDir && matchesName && !entry.isDirectory;
-      }
-    );
+    // If not found in exported format, try to find by filename in product directory
+    if (!imageEntry) {
+      imageEntry = zipEntries.find(
+        (entry) => {
+          const entryPath = entry.entryName.replace(/\\/g, '/');
+          // Check if entry is in the product directory and matches the image name
+          if (normalizedDir === '') {
+            // Root level: check if it matches the image name directly or in images/ folder
+            return (entryPath === imageName || 
+                   entryPath === `images/${imageName}` ||
+                   entryPath.endsWith(`/${imageName}`)) && !entry.isDirectory;
+          } else {
+            // In a subdirectory
+            const isInDir = entryPath.startsWith(normalizedDir + '/');
+            const matchesName = entryPath === `${normalizedDir}/${imageName}` || 
+                               entryPath.endsWith(`/${imageName}`);
+            return isInDir && matchesName && !entry.isDirectory;
+          }
+        }
+      ) || null;
+    }
+
+    // If still not found, try to find in images/ folder by filename
+    if (!imageEntry) {
+      imageEntry = zipEntries.find(
+        (entry) => {
+          const entryPath = entry.entryName.replace(/\\/g, '/');
+          return entryPath === `images/${imageName}` || 
+                 entryPath.endsWith(`/images/${imageName}`) ||
+                 entryPath.endsWith(`/${imageName}`);
+        }
+      ) || null;
+    }
 
     if (!imageEntry) {
+      // If image is a URL but wasn't recognized, use it directly
+      if (imageName.startsWith('http://') || imageName.startsWith('https://')) {
+        uploadedImageUrls.push(imageName);
+        continue;
+      }
       return {
         success: false,
-        error: `Image file not found in ZIP: ${imageName} for product ${slug}`,
+        error: `Image file not found in ZIP: ${imageName} for product ${slug}. Looked in: ${normalizedDir || 'root'}, images/ folder, and by filename.`,
       };
     }
 
@@ -276,7 +324,7 @@ async function processProductFromZip(
         };
       }
 
-      const publicUrl = await uploadImageToSupabase(imageBuffer, slug, imageName, i);
+      const publicUrl = await uploadImageToSupabase(imageBuffer, slug, imageEntry.entryName.split('/').pop() || `img${i + 1}`, i);
       uploadedImageUrls.push(publicUrl);
     } catch (error: any) {
       return {
