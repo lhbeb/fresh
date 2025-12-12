@@ -49,6 +49,8 @@ interface ProductJson {
 interface ImportResult {
   success: boolean;
   productSlug?: string;
+  originalSlug?: string;
+  slugModified?: boolean;
   error?: string;
 }
 
@@ -90,6 +92,61 @@ async function uploadImageToSupabase(
   return data.publicUrl;
 }
 
+/**
+ * Generate a unique slug by appending -2, -3, etc. if the slug already exists
+ */
+async function generateUniqueSlug(baseSlug: string): Promise<string> {
+  // First check if the base slug exists
+  const { data: existingProducts, error: checkError } = await supabaseAdmin
+    .from('products')
+    .select('slug')
+    .eq('slug', baseSlug)
+    .limit(1);
+
+  // If there's an error (other than not found) or if product exists, we need to generate a new slug
+  // If no products found, existingProducts will be an empty array
+  if (checkError && checkError.code !== 'PGRST116') {
+    // Unexpected error
+    throw new Error(`Error checking slug existence: ${checkError.message}`);
+  }
+
+  // If it doesn't exist (empty array), return the base slug
+  if (!existingProducts || existingProducts.length === 0) {
+    return baseSlug;
+  }
+
+  // If it exists, try appending -2, -3, etc. until we find a unique one
+  let counter = 2;
+  let uniqueSlug = `${baseSlug}-${counter}`;
+  
+  while (true) {
+    const { data: checkProducts, error: slugCheckError } = await supabaseAdmin
+      .from('products')
+      .select('slug')
+      .eq('slug', uniqueSlug)
+      .limit(1);
+
+    if (slugCheckError && slugCheckError.code !== 'PGRST116') {
+      // Unexpected error
+      throw new Error(`Error checking slug existence: ${slugCheckError.message}`);
+    }
+
+    // If no products found, we found a unique slug
+    if (!checkProducts || checkProducts.length === 0) {
+      return uniqueSlug;
+    }
+
+    // Try next number
+    counter++;
+    uniqueSlug = `${baseSlug}-${counter}`;
+    
+    // Safety check to prevent infinite loops (shouldn't happen in practice)
+    if (counter > 1000) {
+      throw new Error(`Unable to generate unique slug for ${baseSlug} after 1000 attempts`);
+    }
+  }
+}
+
 async function processProductFromZip(
   productDir: string,
   zip: AdmZip,
@@ -128,11 +185,24 @@ async function processProductFromZip(
   }
 
   // Validate required fields
-  const slug = productData.slug?.trim();
-  if (!slug) {
+  const baseSlug = productData.slug?.trim();
+  if (!baseSlug) {
     return {
       success: false,
       error: 'Missing required field: slug',
+    };
+  }
+
+  // Generate a unique slug (will append -2, -3, etc. if needed)
+  let slug: string;
+  let slugModified = false;
+  try {
+    slug = await generateUniqueSlug(baseSlug);
+    slugModified = slug !== baseSlug;
+  } catch (error: any) {
+    return {
+      success: false,
+      error: `Failed to generate unique slug: ${error.message}`,
     };
   }
 
@@ -252,22 +322,24 @@ async function processProductFromZip(
     in_stock: productData.in_stock !== undefined ? productData.in_stock : (productData.inStock !== undefined ? productData.inStock : true),
   };
 
-  // Upsert product to database
+  // Insert product to database (slug is guaranteed to be unique)
   try {
-    const { error: upsertError } = await supabaseAdmin
+    const { error: insertError } = await supabaseAdmin
       .from('products')
-      .upsert(productPayload, { onConflict: 'slug' });
+      .insert(productPayload);
 
-    if (upsertError) {
+    if (insertError) {
       return {
         success: false,
-        error: `Database error for ${slug}: ${upsertError.message}`,
+        error: `Database error for ${slug}: ${insertError.message}`,
       };
     }
 
     return {
       success: true,
       productSlug: slug,
+      originalSlug: baseSlug,
+      slugModified,
     };
   } catch (error: any) {
     return {

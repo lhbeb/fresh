@@ -21,7 +21,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, cardBackground = 'bg
       <Link href={`/products/${slug}`} className="block">
         <div className="relative w-full h-48">
           {!imgLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gray-200 animate-pulse rounded-t-md z-10">
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-200 animate-pulse rounded-t-md z-20">
               <div className="h-12 w-12 bg-gray-300 rounded-full" />
             </div>
           )}
@@ -29,14 +29,14 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, cardBackground = 'bg
             src={images[0]}
             alt={title}
             fill
-            className={`object-cover rounded-t-md transition-opacity duration-300 ${imgLoaded ? 'opacity-100' : 'opacity-0'} ${isSoldOut ? 'opacity-50' : ''}`}
+            className={`object-cover rounded-t-md transition-opacity duration-300 z-0 ${imgLoaded ? 'opacity-100' : 'opacity-0'} ${isSoldOut ? 'opacity-50' : ''}`}
             sizes="(max-width: 768px) 50vw, 33vw"
             loading="lazy"
             unoptimized
             onLoadingComplete={() => setImgLoaded(true)}
           />
           {isSoldOut && (
-            <div className="absolute inset-0 bg-[rgba(0,0,0,0.65)] flex items-center justify-center rounded-t-md">
+            <div className="absolute inset-0 bg-[rgba(0,0,0,0.65)] flex items-center justify-center rounded-t-md z-30">
               <div className="border-[3px] border-[#fcf050] rounded-lg px-5 py-2">
                 <span className="sold-out-badge text-[#fcf050] text-sm uppercase tracking-wider whitespace-nowrap">
                   Sold Out
