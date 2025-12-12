@@ -25,7 +25,7 @@ function isRemoteUrl(url: string): boolean {
  * Format product data for export (compatible with bulk import)
  * Images array should contain filenames, not URLs
  */
-function formatProductForExport(product: any) {
+function formatProductForExport(product: any): any {
   const {
     id,
     slug,
@@ -78,7 +78,7 @@ function formatProductForExport(product: any) {
     is_featured: isFeatured || is_featured || false,
     isFeatured: isFeatured || is_featured || false,
     listed_by: listedBy || listed_by || null,
-    // images will be added as filenames after processing
+    images: [] as string[], // Will be populated with filenames
   };
 }
 
