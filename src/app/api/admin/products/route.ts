@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate listed_by value
-    const validListedByValues = ['walid', 'abdo', 'jebbar', 'amine', 'othmane', 'janah', 'youssef'];
+    const validListedByValues = ['walid', 'abdo', 'jebbar', 'amine', 'mehdi', 'othmane', 'janah', 'youssef'];
     if (productData.listed_by && !validListedByValues.includes(productData.listed_by)) {
       return NextResponse.json(
         { error: `Invalid listed_by value. Must be one of: ${validListedByValues.join(', ')}` },

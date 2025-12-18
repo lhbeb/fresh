@@ -44,3 +44,5 @@ After adding the environment variable:
 3. You should be able to access it without logging in
 4. Check the console for `🔓 [AUTH]` messages confirming the bypass
 
+
+

@@ -551,6 +551,7 @@ export default function EditProductPage() {
                 <option value="abdo">abdo</option>
                 <option value="jebbar">jebbar</option>
                 <option value="amine">amine</option>
+                <option value="mehdi">mehdi</option>
                 <option value="othmane">othmane</option>
                 <option value="janah">janah</option>
                 <option value="youssef">youssef</option>

@@ -132,7 +132,7 @@ export async function PATCH(
         );
       }
       // Validate listed_by value
-      const validListedByValues = ['walid', 'abdo', 'jebbar', 'amine', 'othmane', 'janah', 'youssef'];
+      const validListedByValues = ['walid', 'abdo', 'jebbar', 'amine', 'mehdi', 'othmane', 'janah', 'youssef'];
       if (!validListedByValues.includes(updates.listed_by)) {
         return NextResponse.json(
           { error: `Invalid listed_by value. Must be one of: ${validListedByValues.join(', ')}` },

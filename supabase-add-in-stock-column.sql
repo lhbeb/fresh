@@ -16,3 +16,5 @@ FROM information_schema.columns
 WHERE table_name = 'products' 
 AND column_name = 'in_stock';
 
+
+
